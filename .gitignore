@@ -1,0 +1,49 @@
+# Binaries
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go
+*.test
+*.out
+go.work
+go.work.sum
+
+# Dependencies (if vendoring)
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Debug
+*.log
+debug
+__debug_bin*
+
+# Test coverage
+coverage.out
+coverage.html
+*.coverprofile
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Environment
+.env
+.env.local
+.envrc
+
+# Butler specific
+*.kubeconfig
+.butler/

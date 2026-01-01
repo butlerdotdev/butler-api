@@ -1,0 +1,5 @@
+## Append samples of your project ##
+resources:
+- butler_v1alpha1_machinerequest.yaml
+- butler_v1alpha1_providerconfig.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
