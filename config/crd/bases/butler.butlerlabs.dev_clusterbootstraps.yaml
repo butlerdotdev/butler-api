@@ -57,6 +57,82 @@ spec:
               addons:
                 description: Addons defines which addons to install
                 properties:
+                  butlerController:
+                    description: ButlerController defines butler-controller configuration
+                    properties:
+                      enabled:
+                        default: true
+                        description: Enabled controls whether butler-controller is
+                          installed
+                        type: boolean
+                      image:
+                        default: ghcr.io/butlerdotdev/butler-controller
+                        description: Image is the full image reference (overrides
+                          default)
+                        type: string
+                      version:
+                        default: latest
+                        description: Version is the butler-controller version (image
+                          tag)
+                        type: string
+                    type: object
+                  capi:
+                    description: CAPI defines Cluster API configuration
+                    properties:
+                      enabled:
+                        default: true
+                        description: Enabled controls whether CAPI is installed
+                        type: boolean
+                      infrastructureProviders:
+                        description: |-
+                          InfrastructureProviders lists additional infrastructure providers to install
+                          The management cluster's provider is ALWAYS included automatically
+                        items:
+                          description: CAPIInfraProviderSpec defines an infrastructure
+                            provider configuration
+                          properties:
+                            credentialsSecretRef:
+                              description: |-
+                                CredentialsSecretRef points to provider credentials
+                                Required for providers other than the management cluster's provider
+                              properties:
+                                key:
+                                  description: |-
+                                    Key is the key within the Secret to reference.
+                                    If not specified, the entire Secret data is used.
+                                  type: string
+                                name:
+                                  description: Name is the name of the Secret.
+                                  minLength: 1
+                                  type: string
+                                namespace:
+                                  description: |-
+                                    Namespace is the namespace of the Secret.
+                                    If not specified, the namespace of the referencing resource is used.
+                                  type: string
+                              required:
+                              - name
+                              type: object
+                            name:
+                              description: Name is the provider name
+                              enum:
+                              - harvester
+                              - nutanix
+                              - proxmox
+                              type: string
+                            version:
+                              description: Version overrides the default provider
+                                version
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                      version:
+                        default: v1.9.4
+                        description: Version is the CAPI core version
+                        type: string
+                    type: object
                   certManager:
                     description: CertManager defines cert-manager configuration
                     properties:

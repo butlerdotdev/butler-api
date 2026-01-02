@@ -217,6 +217,14 @@ type ClusterBootstrapAddonsSpec struct {
 	// ControlPlaneProvider defines hosted control plane provider (Kamaji)
 	// +optional
 	ControlPlaneProvider *ControlPlaneProviderAddonSpec `json:"controlPlaneProvider,omitempty"`
+
+	// CAPI defines Cluster API configuration
+	// +optional
+	CAPI *CAPIAddonSpec `json:"capi,omitempty"`
+
+	// ButlerController defines butler-controller configuration
+	// +optional
+	ButlerController *ButlerControllerAddonSpec `json:"butlerController,omitempty"`
 }
 
 // CNIAddonSpec defines CNI configuration
@@ -352,6 +360,58 @@ type ControlPlaneProviderAddonSpec struct {
 	// Version is the Kamaji version
 	// +optional
 	Version string `json:"version,omitempty"`
+}
+
+// CAPIAddonSpec defines Cluster API configuration
+type CAPIAddonSpec struct {
+	// Enabled controls whether CAPI is installed
+	// +kubebuilder:default=true
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Version is the CAPI core version
+	// +kubebuilder:default="v1.9.4"
+	// +optional
+	Version string `json:"version,omitempty"`
+
+	// InfrastructureProviders lists additional infrastructure providers to install
+	// The management cluster's provider is ALWAYS included automatically
+	// +optional
+	InfrastructureProviders []CAPIInfraProviderSpec `json:"infrastructureProviders,omitempty"`
+}
+
+// CAPIInfraProviderSpec defines an infrastructure provider configuration
+type CAPIInfraProviderSpec struct {
+	// Name is the provider name
+	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox
+	Name string `json:"name"`
+
+	// Version overrides the default provider version
+	// +optional
+	Version string `json:"version,omitempty"`
+
+	// CredentialsSecretRef points to provider credentials
+	// Required for providers other than the management cluster's provider
+	// +optional
+	CredentialsSecretRef *SecretReference `json:"credentialsSecretRef,omitempty"`
+}
+
+// ButlerControllerAddonSpec defines Butler controller configuration
+type ButlerControllerAddonSpec struct {
+	// Enabled controls whether butler-controller is installed
+	// +kubebuilder:default=true
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Version is the butler-controller version (image tag)
+	// +kubebuilder:default="latest"
+	// +optional
+	Version string `json:"version,omitempty"`
+
+	// Image is the full image reference (overrides default)
+	// +optional
+	// +kubebuilder:default="ghcr.io/butlerdotdev/butler-controller"
+	Image string `json:"image,omitempty"`
 }
 
 // ClusterBootstrapStatus defines the observed state of ClusterBootstrap
@@ -506,4 +566,45 @@ func (c *ClusterBootstrap) AllMachinesRunning() bool {
 		}
 	}
 	return true
+}
+
+// IsCAPIEnabled returns whether CAPI should be installed
+func (s *ClusterBootstrapAddonsSpec) IsCAPIEnabled() bool {
+	if s == nil || s.CAPI == nil || s.CAPI.Enabled == nil {
+		return true // Default enabled
+	}
+	return *s.CAPI.Enabled
+}
+
+// GetCAPIVersion returns the CAPI version to install
+func (s *ClusterBootstrapAddonsSpec) GetCAPIVersion() string {
+	if s == nil || s.CAPI == nil || s.CAPI.Version == "" {
+		return "v1.9.4"
+	}
+	return s.CAPI.Version
+}
+
+// IsButlerControllerEnabled returns whether butler-controller should be installed
+func (s *ClusterBootstrapAddonsSpec) IsButlerControllerEnabled() bool {
+	if s == nil || s.ButlerController == nil || s.ButlerController.Enabled == nil {
+		return true // Default enabled
+	}
+	return *s.ButlerController.Enabled
+}
+
+// GetButlerControllerImage returns the full butler-controller image reference
+func (s *ClusterBootstrapAddonsSpec) GetButlerControllerImage() string {
+	image := "ghcr.io/butlerdotdev/butler-controller"
+	version := "latest"
+
+	if s != nil && s.ButlerController != nil {
+		if s.ButlerController.Image != "" {
+			image = s.ButlerController.Image
+		}
+		if s.ButlerController.Version != "" {
+			version = s.ButlerController.Version
+		}
+	}
+
+	return image + ":" + version
 }
