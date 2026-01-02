@@ -205,6 +205,18 @@ type ClusterBootstrapAddonsSpec struct {
 	// ControlPlaneHA defines control plane HA configuration
 	// +optional
 	ControlPlaneHA *ControlPlaneHAAddonSpec `json:"controlPlaneHA,omitempty"`
+
+	// CertManager defines cert-manager configuration
+	// +optional
+	CertManager *CertManagerAddonSpec `json:"certManager,omitempty"`
+
+	// Ingress defines ingress controller configuration
+	// +optional
+	Ingress *IngressAddonSpec `json:"ingress,omitempty"`
+
+	// ControlPlaneProvider defines hosted control plane provider (Kamaji)
+	// +optional
+	ControlPlaneProvider *ControlPlaneProviderAddonSpec `json:"controlPlaneProvider,omitempty"`
 }
 
 // CNIAddonSpec defines CNI configuration
@@ -259,6 +271,11 @@ type GitOpsAddonSpec struct {
 	// +kubebuilder:validation:Enum=flux;none
 	// +kubebuilder:default=flux
 	Type string `json:"type,omitempty"`
+
+	// Enabled controls whether GitOps is installed
+	// +kubebuilder:default=false
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
 
 	// Version is the addon version
 	// +optional
