@@ -48,6 +48,10 @@ const (
 
 // ClusterBootstrapSpec defines the desired state of ClusterBootstrap
 type ClusterBootstrapSpec struct {
+	// Provider is the infrastructure provider type (harvester, nutanix, proxmox)
+	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox
+	Provider string `json:"provider"`
+
 	// ProviderRef references the ProviderConfig to use for provisioning
 	// Reuses existing ProviderReference from common_types.go
 	// +kubebuilder:validation:Required

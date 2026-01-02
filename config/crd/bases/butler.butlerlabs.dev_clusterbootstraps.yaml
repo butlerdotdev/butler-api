@@ -439,6 +439,14 @@ spec:
               paused:
                 description: Paused can be set to true to pause reconciliation
                 type: boolean
+              provider:
+                description: Provider is the infrastructure provider type (harvester,
+                  nutanix, proxmox)
+                enum:
+                - harvester
+                - nutanix
+                - proxmox
+                type: string
               providerRef:
                 description: |-
                   ProviderRef references the ProviderConfig to use for provisioning
@@ -501,6 +509,7 @@ spec:
             required:
             - cluster
             - network
+            - provider
             - providerRef
             - talos
             type: object
