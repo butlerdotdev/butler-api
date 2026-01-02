@@ -1,0 +1,45 @@
+apiVersion: butler.butlerlabs.dev/v1alpha1
+kind: ClusterBootstrap
+metadata:
+  labels:
+    app.kubernetes.io/name: butler-api
+    app.kubernetes.io/managed-by: kustomize
+  name: butler-alpha
+spec:
+  provider: harvester
+  providerRef:
+    name: harvester-config
+    namespace: default
+  cluster:
+    name: butler-alpha
+    controlPlane:
+      replicas: 3
+      cpu: 4
+      memoryMB: 16384
+      diskGB: 100
+    workers:
+      replicas: 3
+      cpu: 8
+      memoryMB: 32768
+      diskGB: 100
+      extraDisks:
+        - sizeGB: 200
+  network:
+    podCIDR: 10.244.0.0/16
+    serviceCIDR: 10.96.0.0/12
+    vip: 10.40.0.201
+  talos:
+    version: v1.9.0
+    schematic: dc7b152cb3ea99b821fcb7340ce7168313ce393d663740b791c36f6e95fc8586
+  addons:
+    cni:
+      type: cilium
+    storage:
+      type: longhorn
+    loadBalancer:
+      type: metallb
+      addressPool: 10.40.0.200-10.40.0.250
+    capi:
+      enabled: true
+    butlerController:
+      enabled: false

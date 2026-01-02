@@ -1,5 +1,5 @@
 /*
-Copyright 2026 Butler Labs.
+Copyright 2026 The Butler Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,18 +19,6 @@ package v1alpha1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-// =============================================================================
-// ClusterBootstrap CRD - Add this file to butler-api/api/v1alpha1/
-// =============================================================================
-//
-// This file REUSES existing types from butler-api:
-//   - ProviderReference (common_types.go)
-//   - DiskSpec (machinerequest_types.go) - has SizeGB, StorageClass
-//   - MachineRole, MachinePhase (machinerequest_types.go) - for constants
-//
-// It defines NEW types only where needed for bootstrap orchestration.
-// =============================================================================
 
 // ClusterBootstrapPhase represents the current phase of bootstrap
 type ClusterBootstrapPhase string
