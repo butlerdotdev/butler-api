@@ -1,12 +1,9 @@
 /*
-Copyright 2025 The Butler Authors.
-
+Copyright 2026 Butler Labs.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,185 +17,131 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ProviderType defines the supported infrastructure providers.
+// ProviderType defines the type of infrastructure provider
 // +kubebuilder:validation:Enum=harvester;nutanix;proxmox
 type ProviderType string
 
 const (
-	// ProviderTypeHarvester is the Harvester HCI provider.
 	ProviderTypeHarvester ProviderType = "harvester"
-
-	// ProviderTypeNutanix is the Nutanix AHV provider.
-	ProviderTypeNutanix ProviderType = "nutanix"
-
-	// ProviderTypeProxmox is the Proxmox VE provider.
-	ProviderTypeProxmox ProviderType = "proxmox"
+	ProviderTypeNutanix   ProviderType = "nutanix"
+	ProviderTypeProxmox   ProviderType = "proxmox"
 )
 
-// ProviderConfigSpec defines the desired state of ProviderConfig.
+// ProviderConfigSpec defines the desired state of ProviderConfig
 type ProviderConfigSpec struct {
-	// Provider specifies the infrastructure provider type.
-	// +kubebuilder:validation:Required
+	// Provider is the type of infrastructure provider
 	Provider ProviderType `json:"provider"`
 
-	// CredentialsRef references the Secret containing provider credentials.
-	// The Secret must contain the appropriate keys for the provider type:
-	// - harvester: "kubeconfig" (Harvester kubeconfig)
-	// - nutanix: "username", "password"
-	// - proxmox: "username", "password" or "token"
-	// +kubebuilder:validation:Required
-	CredentialsRef SecretReference `json:"credentialsRef"`
-
-	// Harvester contains Harvester-specific configuration.
-	// Required when provider is "harvester".
+	// Harvester contains Harvester-specific configuration
 	// +optional
 	Harvester *HarvesterProviderConfig `json:"harvester,omitempty"`
 
-	// Nutanix contains Nutanix-specific configuration.
-	// Required when provider is "nutanix".
+	// Nutanix contains Nutanix-specific configuration
 	// +optional
 	Nutanix *NutanixProviderConfig `json:"nutanix,omitempty"`
 
-	// Proxmox contains Proxmox-specific configuration.
-	// Required when provider is "proxmox".
+	// Proxmox contains Proxmox-specific configuration
 	// +optional
 	Proxmox *ProxmoxProviderConfig `json:"proxmox,omitempty"`
 }
 
-// HarvesterProviderConfig contains Harvester-specific configuration.
+// HarvesterProviderConfig defines Harvester-specific configuration
 type HarvesterProviderConfig struct {
-	// Endpoint is the Harvester API server URL.
-	// If not specified, extracted from the kubeconfig.
-	// +optional
-	Endpoint string `json:"endpoint,omitempty"`
+	// KubeconfigSecretRef references a secret containing the Harvester kubeconfig
+	KubeconfigSecretRef SecretReference `json:"kubeconfigSecretRef"`
 
-	// Namespace is the Harvester namespace for VM resources.
+	// Namespace is the Harvester namespace for VMs
 	// +kubebuilder:default="default"
-	// +optional
 	Namespace string `json:"namespace,omitempty"`
 
-	// NetworkName is the VM network in "namespace/name" format.
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Pattern=`^[a-z0-9-]+/[a-z0-9-]+$`
+	// NetworkName is the Harvester network name
 	NetworkName string `json:"networkName"`
 
-	// ImageName is the default OS image in "namespace/name" format.
-	// Used when MachineRequest doesn't specify an image.
-	// +optional
-	ImageName string `json:"imageName,omitempty"`
-
-	// StorageClassName is the default storage class for VM disks.
-	// +optional
-	StorageClassName string `json:"storageClassName,omitempty"`
+	// ImageName is the Talos image name in Harvester
+	ImageName string `json:"imageName"`
 }
 
-// NutanixProviderConfig contains Nutanix-specific configuration.
+// NutanixProviderConfig defines Nutanix-specific configuration
 type NutanixProviderConfig struct {
-	// Endpoint is the Prism Central API URL.
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Pattern=`^https?://`
+	// Endpoint is the Prism Central endpoint URL
 	Endpoint string `json:"endpoint"`
 
-	// Port is the Prism Central API port.
-	// +kubebuilder:default=9440
-	// +optional
-	Port int32 `json:"port,omitempty"`
+	// CredentialsSecretRef references a secret containing username/password
+	CredentialsSecretRef SecretReference `json:"credentialsSecretRef"`
 
-	// Insecure allows insecure TLS connections.
-	// +kubebuilder:default=false
-	// +optional
-	Insecure bool `json:"insecure,omitempty"`
-
-	// ClusterUUID is the target Nutanix cluster UUID.
-	// +kubebuilder:validation:Required
+	// ClusterUUID is the Nutanix cluster UUID
 	ClusterUUID string `json:"clusterUUID"`
 
-	// SubnetUUID is the network subnet UUID for VMs.
-	// +kubebuilder:validation:Required
+	// SubnetUUID is the Nutanix subnet UUID
 	SubnetUUID string `json:"subnetUUID"`
 
-	// ImageUUID is the default OS image UUID.
-	// Used when MachineRequest doesn't specify an image.
-	// +optional
-	ImageUUID string `json:"imageUUID,omitempty"`
+	// ImageUUID is the Talos image UUID
+	ImageUUID string `json:"imageUUID"`
 
-	// StorageContainerUUID is the storage container for VM disks.
-	// +optional
-	StorageContainerUUID string `json:"storageContainerUUID,omitempty"`
-}
-
-// ProxmoxProviderConfig contains Proxmox-specific configuration.
-type ProxmoxProviderConfig struct {
-	// Endpoint is the Proxmox API URL.
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Pattern=`^https?://`
-	Endpoint string `json:"endpoint"`
-
-	// Insecure allows insecure TLS connections.
-	// +kubebuilder:default=false
+	// Insecure allows insecure TLS connections
 	// +optional
 	Insecure bool `json:"insecure,omitempty"`
-
-	// Nodes is the list of Proxmox nodes available for VM placement.
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinItems=1
-	Nodes []string `json:"nodes"`
-
-	// Storage is the storage location for VM disks.
-	// +kubebuilder:validation:Required
-	Storage string `json:"storage"`
-
-	// TemplateID is the VM template ID to clone.
-	// +optional
-	TemplateID int32 `json:"templateID,omitempty"`
-
-	// VMIDRange defines the range of VM IDs to use.
-	// +optional
-	VMIDRange *VMIDRange `json:"vmidRange,omitempty"`
 }
 
-// VMIDRange defines a range of VM IDs.
+// ProxmoxProviderConfig defines Proxmox-specific configuration
+type ProxmoxProviderConfig struct {
+	// Endpoint is the Proxmox API endpoint URL
+	Endpoint string `json:"endpoint"`
+
+	// CredentialsSecretRef references a secret containing username/password or API token
+	CredentialsSecretRef SecretReference `json:"credentialsSecretRef"`
+
+	// Node is the Proxmox node name
+	Node string `json:"node"`
+
+	// StorageLocation is the storage location for VMs
+	StorageLocation string `json:"storageLocation"`
+
+	// VMIDRange defines the range for VM IDs
+	VMIDRange VMIDRange `json:"vmidRange"`
+
+	// TemplateID is the VM template to clone
+	TemplateID int `json:"templateID"`
+
+	// Insecure allows insecure TLS connections
+	// +optional
+	Insecure bool `json:"insecure,omitempty"`
+}
+
+// VMIDRange defines a range of VM IDs
 type VMIDRange struct {
-	// Start is the first VM ID in the range.
-	// +kubebuilder:validation:Minimum=100
-	Start int32 `json:"start"`
+	// Start is the starting VM ID
+	Start int `json:"start"`
 
-	// End is the last VM ID in the range.
-	// +kubebuilder:validation:Minimum=100
-	End int32 `json:"end"`
+	// End is the ending VM ID
+	End int `json:"end"`
 }
 
-// ProviderConfigStatus defines the observed state of ProviderConfig.
+// ProviderConfigStatus defines the observed state of ProviderConfig
 type ProviderConfigStatus struct {
-	// Conditions represent the latest available observations of the ProviderConfig's state.
+	// Ready indicates the provider is ready to be used
+	Ready bool `json:"ready,omitempty"`
+
+	// Message provides additional status information
 	// +optional
-	// +listType=map
-	// +listMapKey=type
+	Message string `json:"message,omitempty"`
+
+	// Conditions represent the latest observations
+	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
-	// Validated indicates whether the provider configuration has been validated.
+	// LastUpdated is the last time the status was updated
 	// +optional
-	Validated bool `json:"validated,omitempty"`
-
-	// LastValidationTime is the timestamp of the last successful validation.
-	// +optional
-	LastValidationTime *metav1.Time `json:"lastValidationTime,omitempty"`
-
-	// ProviderVersion is the detected version of the infrastructure provider.
-	// +optional
-	ProviderVersion string `json:"providerVersion,omitempty"`
+	LastUpdated metav1.Time `json:"lastUpdated,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=pc
-// +kubebuilder:printcolumn:name="Provider",type="string",JSONPath=".spec.provider",description="Infrastructure provider type"
-// +kubebuilder:printcolumn:name="Validated",type="boolean",JSONPath=".status.validated",description="Configuration validated"
+// +kubebuilder:printcolumn:name="Provider",type="string",JSONPath=".spec.provider"
+// +kubebuilder:printcolumn:name="Ready",type="boolean",JSONPath=".status.ready"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
-// ProviderConfig defines the configuration for an infrastructure provider.
-// It contains credentials and provider-specific settings needed to create
-// and manage virtual machines.
+// ProviderConfig is the Schema for the providerconfigs API
 type ProviderConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -209,7 +152,7 @@ type ProviderConfig struct {
 
 // +kubebuilder:object:root=true
 
-// ProviderConfigList contains a list of ProviderConfig.
+// ProviderConfigList contains a list of ProviderConfig
 type ProviderConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

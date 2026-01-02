@@ -1,12 +1,9 @@
 /*
-Copyright 2025 The Butler Authors.
-
+Copyright 2026 Butler Labs.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,87 +13,46 @@ limitations under the License.
 
 package v1alpha1
 
-// ProviderReference references a ProviderConfig resource.
+// ProviderReference references a ProviderConfig
 type ProviderReference struct {
-	// Name is the name of the ProviderConfig resource.
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinLength=1
+	// Name of the ProviderConfig
 	Name string `json:"name"`
 
-	// Namespace is the namespace of the ProviderConfig resource.
-	// If not specified, the namespace of the referencing resource is used.
+	// Namespace of the ProviderConfig
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
 }
 
-// SecretReference references a Secret resource.
+// SecretReference references a Secret
 type SecretReference struct {
-	// Name is the name of the Secret.
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinLength=1
+	// Name of the secret
 	Name string `json:"name"`
 
-	// Namespace is the namespace of the Secret.
-	// If not specified, the namespace of the referencing resource is used.
+	// Namespace of the secret
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
 
-	// Key is the key within the Secret to reference.
-	// If not specified, the entire Secret data is used.
+	// Key in the secret
 	// +optional
 	Key string `json:"key,omitempty"`
 }
 
-// LocalObjectReference references a resource in the same namespace.
-type LocalObjectReference struct {
-	// Name is the name of the resource.
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinLength=1
-	Name string `json:"name"`
-}
+// MachineRole defines the role of a machine
+// +kubebuilder:validation:Enum=control-plane;worker
+type MachineRole string
 
-// Condition types following Kubernetes API conventions.
-// See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
 const (
-	// ConditionTypeReady indicates the resource is ready for use.
-	ConditionTypeReady = "Ready"
-
-	// ConditionTypeProgressing indicates the resource is making progress toward Ready.
-	ConditionTypeProgressing = "Progressing"
-
-	// ConditionTypeDegraded indicates the resource is in a degraded state.
-	ConditionTypeDegraded = "Degraded"
+	MachineRoleControlPlane MachineRole = "control-plane"
+	MachineRoleWorker       MachineRole = "worker"
 )
 
-// Condition reasons for MachineRequest.
+// MachinePhase defines the phase of a machine
+type MachinePhase string
+
 const (
-	// ReasonPending indicates the request is waiting to be processed.
-	ReasonPending = "Pending"
-
-	// ReasonCreating indicates the resource is being created.
-	ReasonCreating = "Creating"
-
-	// ReasonCreated indicates the resource was successfully created.
-	ReasonCreated = "Created"
-
-	// ReasonRunning indicates the resource is running.
-	ReasonRunning = "Running"
-
-	// ReasonWaitingForIP indicates waiting for IP address assignment.
-	ReasonWaitingForIP = "WaitingForIP"
-
-	// ReasonFailed indicates the operation failed.
-	ReasonFailed = "Failed"
-
-	// ReasonDeleting indicates the resource is being deleted.
-	ReasonDeleting = "Deleting"
-
-	// ReasonDeleted indicates the resource was deleted.
-	ReasonDeleted = "Deleted"
-
-	// ReasonProviderError indicates an error from the infrastructure provider.
-	ReasonProviderError = "ProviderError"
-
-	// ReasonInvalidConfiguration indicates invalid configuration.
-	ReasonInvalidConfiguration = "InvalidConfiguration"
+	MachinePhasePending  MachinePhase = "Pending"
+	MachinePhaseCreating MachinePhase = "Creating"
+	MachinePhaseRunning  MachinePhase = "Running"
+	MachinePhaseFailed   MachinePhase = "Failed"
+	MachinePhaseDeleting MachinePhase = "Deleting"
 )

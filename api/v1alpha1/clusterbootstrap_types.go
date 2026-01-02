@@ -1,12 +1,9 @@
 /*
 Copyright 2026 Butler Labs.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,19 +17,301 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// =============================================================================
-// ClusterBootstrap CRD - Add this file to butler-api/api/v1alpha1/
-// =============================================================================
-//
-// This file REUSES existing types from butler-api:
-//   - ProviderReference (common_types.go)
-//   - DiskSpec (machinerequest_types.go) - has SizeGB, StorageClass
-//   - MachineRole, MachinePhase (machinerequest_types.go) - for constants
-//
-// It defines NEW types only where needed for bootstrap orchestration.
-// =============================================================================
+// ClusterBootstrapSpec defines the desired state of ClusterBootstrap
+type ClusterBootstrapSpec struct {
+	// ProviderRef references the provider configuration to use
+	ProviderRef ProviderReference `json:"providerRef"`
 
-// ClusterBootstrapPhase represents the current phase of bootstrap
+	// Cluster defines the cluster configuration
+	Cluster ClusterBootstrapClusterSpec `json:"cluster"`
+
+	// Network defines the network configuration
+	Network ClusterBootstrapNetworkSpec `json:"network"`
+
+	// Talos defines the Talos configuration
+	Talos ClusterBootstrapTalosSpec `json:"talos"`
+
+	// Addons defines the addons to install
+	// +optional
+	Addons ClusterBootstrapAddonsSpec `json:"addons,omitempty"`
+
+	// Paused indicates the reconciliation is paused
+	// +optional
+	Paused bool `json:"paused,omitempty"`
+}
+
+// ClusterBootstrapClusterSpec defines the cluster configuration
+type ClusterBootstrapClusterSpec struct {
+	// Name is the cluster name
+	Name string `json:"name"`
+
+	// ControlPlane defines the control plane node pool
+	ControlPlane ClusterBootstrapNodePool `json:"controlPlane"`
+
+	// Workers defines the worker node pool
+	// +optional
+	Workers *ClusterBootstrapNodePool `json:"workers,omitempty"`
+}
+
+// ClusterBootstrapNodePool defines a node pool configuration
+type ClusterBootstrapNodePool struct {
+	// Replicas is the number of nodes
+	// +kubebuilder:validation:Minimum=1
+	Replicas int32 `json:"replicas"`
+
+	// CPU is the number of CPUs per node
+	// +kubebuilder:validation:Minimum=1
+	CPU int32 `json:"cpu"`
+
+	// MemoryMB is the memory in MB per node
+	// +kubebuilder:validation:Minimum=1024
+	MemoryMB int32 `json:"memoryMB"`
+
+	// DiskGB is the disk size in GB per node
+	// +kubebuilder:validation:Minimum=10
+	DiskGB int32 `json:"diskGB"`
+
+	// ExtraDisks defines additional disks to attach
+	// +optional
+	ExtraDisks []ClusterBootstrapDisk `json:"extraDisks,omitempty"`
+
+	// Labels to apply to nodes
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+}
+
+// ClusterBootstrapDisk defines an extra disk
+type ClusterBootstrapDisk struct {
+	// SizeGB is the disk size in GB
+	// +kubebuilder:validation:Minimum=1
+	SizeGB int32 `json:"sizeGB"`
+}
+
+// ClusterBootstrapNetworkSpec defines the network configuration
+type ClusterBootstrapNetworkSpec struct {
+	// PodCIDR is the CIDR for pod networking
+	// +kubebuilder:default="10.244.0.0/16"
+	PodCIDR string `json:"podCIDR,omitempty"`
+
+	// ServiceCIDR is the CIDR for service networking
+	// +kubebuilder:default="10.96.0.0/12"
+	ServiceCIDR string `json:"serviceCIDR,omitempty"`
+
+	// VIP is the virtual IP for the control plane
+	VIP string `json:"vip"`
+
+	// VIPInterface is the network interface for the VIP
+	// +kubebuilder:default="enp1s0"
+	// +optional
+	VIPInterface string `json:"vipInterface,omitempty"`
+}
+
+// ClusterBootstrapTalosSpec defines the Talos configuration
+type ClusterBootstrapTalosSpec struct {
+	// Version is the Talos version
+	// +kubebuilder:default="v1.9.2"
+	Version string `json:"version,omitempty"`
+
+	// Schematic is the Talos schematic ID for custom images
+	// +optional
+	Schematic string `json:"schematic,omitempty"`
+
+	// InstallDisk is the disk to install Talos on
+	// +kubebuilder:default="/dev/vda"
+	InstallDisk string `json:"installDisk,omitempty"`
+
+	// ConfigPatches are additional config patches to apply
+	// +optional
+	ConfigPatches []ClusterBootstrapConfigPatch `json:"configPatches,omitempty"`
+}
+
+// ClusterBootstrapConfigPatch defines a config patch
+type ClusterBootstrapConfigPatch struct {
+	// Op is the operation (add, replace, remove)
+	Op string `json:"op"`
+
+	// Path is the JSON path
+	Path string `json:"path"`
+
+	// Value is the value to set
+	// +optional
+	Value string `json:"value,omitempty"`
+}
+
+// ClusterBootstrapAddonsSpec defines the addons to install
+type ClusterBootstrapAddonsSpec struct {
+	// ControlPlaneHA defines the control plane HA solution (kube-vip)
+	// +optional
+	ControlPlaneHA *ControlPlaneHASpec `json:"controlPlaneHA,omitempty"`
+
+	// CNI defines the CNI plugin (cilium)
+	// +optional
+	CNI *CNISpec `json:"cni,omitempty"`
+
+	// CertManager defines the cert-manager configuration
+	// +optional
+	CertManager *CertManagerSpec `json:"certManager,omitempty"`
+
+	// Storage defines the storage solution (longhorn)
+	// +optional
+	Storage *StorageSpec `json:"storage,omitempty"`
+
+	// LoadBalancer defines the load balancer (metallb)
+	// +optional
+	LoadBalancer *LoadBalancerSpec `json:"loadBalancer,omitempty"`
+
+	// Ingress defines the ingress controller (traefik)
+	// +optional
+	Ingress *IngressSpec `json:"ingress,omitempty"`
+
+	// ControlPlaneProvider defines the hosted control plane provider (kamaji)
+	// +optional
+	ControlPlaneProvider *ControlPlaneProviderSpec `json:"controlPlaneProvider,omitempty"`
+
+	// GitOps defines the GitOps solution (flux)
+	// +optional
+	GitOps *GitOpsSpec `json:"gitOps,omitempty"`
+}
+
+// ControlPlaneHASpec defines the control plane HA configuration
+type ControlPlaneHASpec struct {
+	// Type is the HA solution type
+	// +kubebuilder:validation:Enum=kube-vip
+	// +kubebuilder:default="kube-vip"
+	Type string `json:"type,omitempty"`
+
+	// Version is the kube-vip version
+	// +optional
+	Version string `json:"version,omitempty"`
+}
+
+// CNISpec defines the CNI configuration
+type CNISpec struct {
+	// Type is the CNI type
+	// +kubebuilder:validation:Enum=cilium
+	// +kubebuilder:default="cilium"
+	Type string `json:"type,omitempty"`
+
+	// Version is the CNI version
+	// +optional
+	Version string `json:"version,omitempty"`
+
+	// HubbleEnabled enables Hubble observability
+	// +kubebuilder:default=true
+	// +optional
+	HubbleEnabled bool `json:"hubbleEnabled,omitempty"`
+}
+
+// CertManagerSpec defines the cert-manager configuration
+type CertManagerSpec struct {
+	// Enabled controls whether cert-manager is installed
+	// +kubebuilder:default=true
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Version is the cert-manager version
+	// +optional
+	Version string `json:"version,omitempty"`
+}
+
+// StorageSpec defines the storage configuration
+type StorageSpec struct {
+	// Type is the storage type
+	// +kubebuilder:validation:Enum=longhorn
+	// +kubebuilder:default="longhorn"
+	Type string `json:"type,omitempty"`
+
+	// Version is the storage version
+	// +optional
+	Version string `json:"version,omitempty"`
+
+	// DefaultReplicaCount is the default replica count for volumes
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:default=2
+	// +optional
+	DefaultReplicaCount int32 `json:"defaultReplicaCount,omitempty"`
+}
+
+// LoadBalancerSpec defines the load balancer configuration
+type LoadBalancerSpec struct {
+	// Type is the load balancer type
+	// +kubebuilder:validation:Enum=metallb
+	// +kubebuilder:default="metallb"
+	Type string `json:"type,omitempty"`
+
+	// Version is the load balancer version
+	// +optional
+	Version string `json:"version,omitempty"`
+
+	// AddressPool is the IP address pool for MetalLB
+	// Example: "10.40.0.200-10.40.0.250"
+	AddressPool string `json:"addressPool,omitempty"`
+}
+
+// IngressSpec defines the ingress controller configuration
+type IngressSpec struct {
+	// Type is the ingress controller type
+	// +kubebuilder:validation:Enum=traefik
+	// +kubebuilder:default="traefik"
+	Type string `json:"type,omitempty"`
+
+	// Enabled controls whether the ingress controller is installed
+	// +kubebuilder:default=true
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Version is the ingress controller version
+	// +optional
+	Version string `json:"version,omitempty"`
+}
+
+// ControlPlaneProviderSpec defines the hosted control plane provider configuration
+type ControlPlaneProviderSpec struct {
+	// Type is the control plane provider type
+	// +kubebuilder:validation:Enum=kamaji
+	// +kubebuilder:default="kamaji"
+	Type string `json:"type,omitempty"`
+
+	// Enabled controls whether Kamaji is installed
+	// +kubebuilder:default=true
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Version is the Kamaji version
+	// +optional
+	Version string `json:"version,omitempty"`
+}
+
+// GitOpsSpec defines the GitOps configuration
+type GitOpsSpec struct {
+	// Type is the GitOps type
+	// +kubebuilder:validation:Enum=flux
+	// +kubebuilder:default="flux"
+	Type string `json:"type,omitempty"`
+
+	// Enabled controls whether GitOps is installed
+	// +kubebuilder:default=true
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Version is the GitOps version
+	// +optional
+	Version string `json:"version,omitempty"`
+
+	// Repository is the Git repository URL
+	// +optional
+	Repository string `json:"repository,omitempty"`
+
+	// Branch is the Git branch
+	// +optional
+	Branch string `json:"branch,omitempty"`
+
+	// Path is the path within the repository
+	// +optional
+	Path string `json:"path,omitempty"`
+}
+
+// ClusterBootstrapPhase represents the current phase of the bootstrap
 type ClusterBootstrapPhase string
 
 const (
@@ -46,254 +325,9 @@ const (
 	ClusterBootstrapPhaseFailed               ClusterBootstrapPhase = "Failed"
 )
 
-// ClusterBootstrapSpec defines the desired state of ClusterBootstrap
-type ClusterBootstrapSpec struct {
-	// ProviderRef references the ProviderConfig to use for provisioning
-	// Reuses existing ProviderReference from common_types.go
-	// +kubebuilder:validation:Required
-	ProviderRef ProviderReference `json:"providerRef"`
-
-	// Cluster defines the cluster configuration
-	// +kubebuilder:validation:Required
-	Cluster ClusterBootstrapClusterSpec `json:"cluster"`
-
-	// Network defines network configuration for the cluster
-	// +kubebuilder:validation:Required
-	Network ClusterBootstrapNetworkSpec `json:"network"`
-
-	// Talos defines Talos-specific configuration
-	// +kubebuilder:validation:Required
-	Talos ClusterBootstrapTalosSpec `json:"talos"`
-
-	// Addons defines which addons to install
-	// +optional
-	Addons ClusterBootstrapAddonsSpec `json:"addons,omitempty"`
-
-	// Paused can be set to true to pause reconciliation
-	// +optional
-	Paused bool `json:"paused,omitempty"`
-}
-
-// ClusterBootstrapClusterSpec defines the cluster topology for bootstrap
-type ClusterBootstrapClusterSpec struct {
-	// Name is the cluster name used for resource naming
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MinLength=1
-	// +kubebuilder:validation:MaxLength=63
-	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
-	Name string `json:"name"`
-
-	// ControlPlane defines control plane node configuration
-	// +kubebuilder:validation:Required
-	ControlPlane ClusterBootstrapNodePool `json:"controlPlane"`
-
-	// Workers defines worker node configuration
-	// +optional
-	Workers *ClusterBootstrapNodePool `json:"workers,omitempty"`
-}
-
-// ClusterBootstrapNodePool defines a pool of nodes for bootstrap
-// Uses same units as MachineRequest (MemoryMB, DiskGB) for consistency
-type ClusterBootstrapNodePool struct {
-	// Replicas is the number of nodes in this pool
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=10
-	Replicas int32 `json:"replicas"`
-
-	// CPU is the number of CPU cores per node
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=128
-	CPU int32 `json:"cpu"`
-
-	// MemoryMB is the memory in MB per node (matches MachineRequest)
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Minimum=2048
-	MemoryMB int32 `json:"memoryMB"`
-
-	// DiskGB is the root disk size in GB per node (matches MachineRequest)
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Minimum=20
-	DiskGB int32 `json:"diskGB"`
-
-	// ExtraDisks defines additional disks to attach to each node
-	// Reuses DiskSpec from machinerequest_types.go
-	// +optional
-	ExtraDisks []DiskSpec `json:"extraDisks,omitempty"`
-
-	// Labels to apply to nodes in this pool
-	// +optional
-	Labels map[string]string `json:"labels,omitempty"`
-}
-
-// ClusterBootstrapNetworkSpec defines cluster networking for bootstrap
-type ClusterBootstrapNetworkSpec struct {
-	// PodCIDR is the CIDR for pod networking
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$`
-	PodCIDR string `json:"podCIDR"`
-
-	// ServiceCIDR is the CIDR for service networking
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$`
-	ServiceCIDR string `json:"serviceCIDR"`
-
-	// VIP is the virtual IP for the control plane endpoint
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
-	VIP string `json:"vip"`
-
-	// VIPInterface is the network interface for the VIP (optional, auto-detected)
-	// +optional
-	VIPInterface string `json:"vipInterface,omitempty"`
-}
-
-// ClusterBootstrapTalosSpec defines Talos configuration for bootstrap
-type ClusterBootstrapTalosSpec struct {
-	// Version is the Talos version to use
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Pattern=`^v[0-9]+\.[0-9]+\.[0-9]+$`
-	Version string `json:"version"`
-
-	// Schematic is the Talos factory schematic ID for the image
-	// +kubebuilder:validation:Required
-	Schematic string `json:"schematic"`
-
-	// ConfigPatches allows inline Talos config patches
-	// +optional
-	ConfigPatches []TalosConfigPatch `json:"configPatches,omitempty"`
-
-	// InstallDisk overrides the default install disk
-	// +optional
-	// +kubebuilder:default="/dev/vda"
-	InstallDisk string `json:"installDisk,omitempty"`
-}
-
-// TalosConfigPatch defines a Talos config patch
-type TalosConfigPatch struct {
-	// Op is the patch operation (add, remove, replace)
-	// +kubebuilder:validation:Enum=add;remove;replace
-	Op string `json:"op"`
-
-	// Path is the JSON path to patch
-	Path string `json:"path"`
-
-	// Value is the value to set (for add/replace)
-	// +optional
-	Value string `json:"value,omitempty"`
-}
-
-// ClusterBootstrapAddonsSpec defines which addons to install during bootstrap
-type ClusterBootstrapAddonsSpec struct {
-	// CNI defines the CNI configuration
-	// +optional
-	CNI *CNIAddonSpec `json:"cni,omitempty"`
-
-	// Storage defines storage configuration
-	// +optional
-	Storage *StorageAddonSpec `json:"storage,omitempty"`
-
-	// LoadBalancer defines load balancer configuration
-	// +optional
-	LoadBalancer *LoadBalancerAddonSpec `json:"loadBalancer,omitempty"`
-
-	// GitOps defines GitOps configuration
-	// +optional
-	GitOps *GitOpsAddonSpec `json:"gitOps,omitempty"`
-
-	// ControlPlaneHA defines control plane HA configuration
-	// +optional
-	ControlPlaneHA *ControlPlaneHAAddonSpec `json:"controlPlaneHA,omitempty"`
-}
-
-// CNIAddonSpec defines CNI configuration
-type CNIAddonSpec struct {
-	// Type is the CNI type
-	// +kubebuilder:validation:Enum=cilium;none
-	// +kubebuilder:default=cilium
-	Type string `json:"type,omitempty"`
-
-	// Version is the addon version
-	// +optional
-	Version string `json:"version,omitempty"`
-
-	// HubbleEnabled enables Hubble observability (Cilium only)
-	// +optional
-	// +kubebuilder:default=true
-	HubbleEnabled bool `json:"hubbleEnabled,omitempty"`
-}
-
-// StorageAddonSpec defines storage configuration
-type StorageAddonSpec struct {
-	// Type is the storage type
-	// +kubebuilder:validation:Enum=longhorn;linstor;none
-	// +kubebuilder:default=longhorn
-	Type string `json:"type,omitempty"`
-
-	// Version is the addon version
-	// +optional
-	Version string `json:"version,omitempty"`
-
-	// DefaultReplicaCount is the default number of replicas (Longhorn)
-	// +optional
-	// +kubebuilder:default=2
-	DefaultReplicaCount int32 `json:"defaultReplicaCount,omitempty"`
-}
-
-// LoadBalancerAddonSpec defines load balancer configuration
-type LoadBalancerAddonSpec struct {
-	// Type is the load balancer type
-	// +kubebuilder:validation:Enum=metallb;none
-	// +kubebuilder:default=metallb
-	Type string `json:"type,omitempty"`
-
-	// AddressPool defines the IP address pool for LoadBalancer services
-	// +optional
-	AddressPool string `json:"addressPool,omitempty"`
-}
-
-// GitOpsAddonSpec defines GitOps configuration
-type GitOpsAddonSpec struct {
-	// Type is the GitOps type
-	// +kubebuilder:validation:Enum=flux;none
-	// +kubebuilder:default=flux
-	Type string `json:"type,omitempty"`
-
-	// Version is the addon version
-	// +optional
-	Version string `json:"version,omitempty"`
-
-	// GitRepository is the repository URL for GitOps
-	// +optional
-	GitRepository string `json:"gitRepository,omitempty"`
-
-	// GitBranch is the branch to track
-	// +optional
-	// +kubebuilder:default=main
-	GitBranch string `json:"gitBranch,omitempty"`
-
-	// GitPath is the path within the repository
-	// +optional
-	// +kubebuilder:default=clusters/management
-	GitPath string `json:"gitPath,omitempty"`
-}
-
-// ControlPlaneHAAddonSpec defines control plane HA configuration
-type ControlPlaneHAAddonSpec struct {
-	// Type is the HA type
-	// +kubebuilder:validation:Enum=kube-vip;none
-	// +kubebuilder:default=kube-vip
-	Type string `json:"type,omitempty"`
-
-	// Version is the addon version
-	// +optional
-	Version string `json:"version,omitempty"`
-}
-
 // ClusterBootstrapStatus defines the observed state of ClusterBootstrap
 type ClusterBootstrapStatus struct {
-	// Phase is the current phase of bootstrap
+	// Phase is the current phase of the bootstrap
 	// +optional
 	Phase ClusterBootstrapPhase `json:"phase,omitempty"`
 
@@ -301,11 +335,11 @@ type ClusterBootstrapStatus struct {
 	// +optional
 	ControlPlaneEndpoint string `json:"controlPlaneEndpoint,omitempty"`
 
-	// Kubeconfig contains the base64-encoded kubeconfig for the cluster
+	// Kubeconfig is the base64-encoded kubeconfig for the cluster
 	// +optional
 	Kubeconfig string `json:"kubeconfig,omitempty"`
 
-	// TalosConfig contains the base64-encoded talosconfig for the cluster
+	// TalosConfig is the base64-encoded talosconfig for the cluster
 	// +optional
 	TalosConfig string `json:"talosconfig,omitempty"`
 
@@ -313,43 +347,43 @@ type ClusterBootstrapStatus struct {
 	// +optional
 	Machines []ClusterBootstrapMachineStatus `json:"machines,omitempty"`
 
-	// FailureReason indicates why bootstrap failed
+	// AddonsInstalled tracks which addons have been installed
+	// +optional
+	AddonsInstalled map[string]bool `json:"addonsInstalled,omitempty"`
+
+	// FailureReason is the reason for failure if Phase is Failed
 	// +optional
 	FailureReason string `json:"failureReason,omitempty"`
 
-	// FailureMessage provides details about the failure
+	// FailureMessage is a human-readable message for the failure
 	// +optional
 	FailureMessage string `json:"failureMessage,omitempty"`
 
-	// Conditions represents the current conditions of the ClusterBootstrap
+	// Conditions represent the latest observations
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
-	// LastUpdated is the timestamp of the last status update
+	// LastUpdated is the last time the status was updated
 	// +optional
 	LastUpdated metav1.Time `json:"lastUpdated,omitempty"`
 
 	// ObservedGeneration is the last observed generation
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
-
-	// AddonsInstalled tracks which addons have been installed
-	// +optional
-	AddonsInstalled map[string]bool `json:"addonsInstalled,omitempty"`
 }
 
-// ClusterBootstrapMachineStatus tracks the status of a machine in the cluster
+// ClusterBootstrapMachineStatus defines the status of a machine
 type ClusterBootstrapMachineStatus struct {
-	// Name is the MachineRequest name
+	// Name is the machine name
 	Name string `json:"name"`
 
 	// Role is the machine role (control-plane or worker)
 	Role string `json:"role"`
 
-	// Phase is the MachineRequest phase
+	// Phase is the machine phase
 	Phase string `json:"phase"`
 
-	// IPAddress is the machine's IP address
+	// IPAddress is the machine IP address
 	// +optional
 	IPAddress string `json:"ipAddress,omitempty"`
 
@@ -357,15 +391,13 @@ type ClusterBootstrapMachineStatus struct {
 	// +optional
 	TalosConfigured bool `json:"talosConfigured,omitempty"`
 
-	// Ready indicates if the node has joined the cluster
+	// Ready indicates if the machine is ready
 	// +optional
 	Ready bool `json:"ready,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=cb
-// +kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".spec.cluster.name"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Endpoint",type="string",JSONPath=".status.controlPlaneEndpoint"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
@@ -390,57 +422,4 @@ type ClusterBootstrapList struct {
 
 func init() {
 	SchemeBuilder.Register(&ClusterBootstrap{}, &ClusterBootstrapList{})
-}
-
-// Helper methods
-
-// IsReady returns true if the cluster bootstrap is complete
-func (c *ClusterBootstrap) IsReady() bool {
-	return c.Status.Phase == ClusterBootstrapPhaseReady
-}
-
-// IsFailed returns true if the cluster bootstrap has failed
-func (c *ClusterBootstrap) IsFailed() bool {
-	return c.Status.Phase == ClusterBootstrapPhaseFailed
-}
-
-// GetControlPlaneIPs returns the IP addresses of control plane nodes
-func (c *ClusterBootstrap) GetControlPlaneIPs() []string {
-	var ips []string
-	for _, m := range c.Status.Machines {
-		if m.Role == string(MachineRoleControlPlane) && m.IPAddress != "" {
-			ips = append(ips, m.IPAddress)
-		}
-	}
-	return ips
-}
-
-// GetWorkerIPs returns the IP addresses of worker nodes
-func (c *ClusterBootstrap) GetWorkerIPs() []string {
-	var ips []string
-	for _, m := range c.Status.Machines {
-		if m.Role == string(MachineRoleWorker) && m.IPAddress != "" {
-			ips = append(ips, m.IPAddress)
-		}
-	}
-	return ips
-}
-
-// AllMachinesRunning returns true if all machines are in Running phase with IPs
-func (c *ClusterBootstrap) AllMachinesRunning() bool {
-	expectedCount := int(c.Spec.Cluster.ControlPlane.Replicas)
-	if c.Spec.Cluster.Workers != nil {
-		expectedCount += int(c.Spec.Cluster.Workers.Replicas)
-	}
-
-	if len(c.Status.Machines) != expectedCount {
-		return false
-	}
-
-	for _, m := range c.Status.Machines {
-		if m.Phase != string(MachinePhaseRunning) || m.IPAddress == "" {
-			return false
-		}
-	}
-	return true
 }

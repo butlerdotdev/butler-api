@@ -11,27 +11,18 @@ spec:
     kind: MachineRequest
     listKind: MachineRequestList
     plural: machinerequests
-    shortNames:
-    - mr
     singular: machinerequest
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - description: VM name
-      jsonPath: .spec.machineName
-      name: Machine
-      type: string
-    - description: Machine role
-      jsonPath: .spec.role
-      name: Role
-      type: string
-    - description: Current phase
-      jsonPath: .status.phase
+    - jsonPath: .status.phase
       name: Phase
       type: string
-    - description: IP address
-      jsonPath: .status.ipAddress
+    - jsonPath: .status.ipAddress
       name: IP
+      type: string
+    - jsonPath: .spec.role
+      name: Role
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
@@ -39,11 +30,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: |-
-          MachineRequest is the Schema for the machinerequests API.
-          It represents a request to create a virtual machine on an infrastructure provider.
-          This resource serves as the interface contract between the Butler bootstrap
-          controller and provider-specific controllers.
+        description: MachineRequest is the Schema for the machinerequests API
         properties:
           apiVersion:
             description: |-
@@ -63,99 +50,66 @@ spec:
           metadata:
             type: object
           spec:
-            description: |-
-              MachineRequestSpec defines the desired state of MachineRequest.
-              This is the interface contract between the bootstrap controller and
-              infrastructure provider controllers.
+            description: MachineRequestSpec defines the desired state of MachineRequest
             properties:
               cpu:
-                description: CPU is the number of virtual CPU cores.
+                description: CPU is the number of CPUs
                 format: int32
-                maximum: 128
                 minimum: 1
                 type: integer
               diskGB:
-                description: DiskGB is the root disk size in gigabytes.
+                description: DiskGB is the disk size in GB
                 format: int32
                 minimum: 10
                 type: integer
               extraDisks:
-                description: ExtraDisks defines additional disks to attach to the
-                  machine.
+                description: ExtraDisks defines additional disks to attach
                 items:
-                  description: DiskSpec defines an additional disk to attach to a
-                    machine.
+                  description: MachineRequestDisk defines an extra disk
                   properties:
                     sizeGB:
-                      description: SizeGB is the disk size in gigabytes.
+                      description: SizeGB is the disk size in GB
                       format: int32
                       minimum: 1
                       type: integer
-                    storageClass:
-                      description: StorageClass is the provider-specific storage class
-                        or tier.
-                      type: string
                   required:
                   - sizeGB
                   type: object
                 type: array
-              image:
-                description: |-
-                  Image overrides the default OS image from ProviderConfig.
-                  Format is provider-specific:
-                  - harvester: "namespace/image-name"
-                  - nutanix: UUID
-                  - proxmox: template ID or image name
-                type: string
               labels:
                 additionalProperties:
                   type: string
-                description: Labels are key-value pairs to apply to the VM in the
-                  provider.
+                description: Labels to apply to the machine
                 type: object
               machineName:
-                description: |-
-                  MachineName is the desired name for the virtual machine.
-                  Must be unique within the provider's namespace/project.
-                maxLength: 63
-                minLength: 1
-                pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                description: MachineName is the name for the machine
                 type: string
               memoryMB:
-                description: MemoryMB is the amount of memory in megabytes.
+                description: MemoryMB is the memory in MB
                 format: int32
                 minimum: 1024
                 type: integer
-              networkData:
-                description: NetworkData is cloud-init network configuration.
-                type: string
               providerRef:
-                description: ProviderRef references the ProviderConfig to use for
-                  this machine.
+                description: ProviderRef references the provider configuration to
+                  use
                 properties:
                   name:
-                    description: Name is the name of the ProviderConfig resource.
-                    minLength: 1
+                    description: Name of the ProviderConfig
                     type: string
                   namespace:
-                    description: |-
-                      Namespace is the namespace of the ProviderConfig resource.
-                      If not specified, the namespace of the referencing resource is used.
+                    description: Namespace of the ProviderConfig
                     type: string
                 required:
                 - name
                 type: object
               role:
-                description: Role indicates the intended role of this machine in the
-                  cluster.
+                description: Role is the machine role (control-plane or worker)
                 enum:
                 - control-plane
                 - worker
                 type: string
               userData:
-                description: |-
-                  UserData is cloud-init user data to configure the machine.
-                  This typically contains the Talos machine configuration.
+                description: UserData is the cloud-init or machine configuration
                 type: string
             required:
             - cpu
@@ -166,12 +120,10 @@ spec:
             - role
             type: object
           status:
-            description: MachineRequestStatus defines the observed state of MachineRequest.
+            description: MachineRequestStatus defines the observed state of MachineRequest
             properties:
               conditions:
-                description: |-
-                  Conditions represent the latest available observations of the
-                  MachineRequest's state.
+                description: Conditions represent the latest observations
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -227,53 +179,27 @@ spec:
                   - type
                   type: object
                 type: array
-                x-kubernetes-list-map-keys:
-                - type
-                x-kubernetes-list-type: map
               failureMessage:
-                description: FailureMessage provides a human-readable failure message.
+                description: FailureMessage is a human-readable message for the failure
                 type: string
               failureReason:
-                description: FailureReason provides a machine-readable failure reason.
+                description: FailureReason is the reason for failure if Phase is Failed
                 type: string
               ipAddress:
-                description: |-
-                  IPAddress is the primary IP address of the machine.
-                  This is set when the machine reaches the Running phase.
+                description: IPAddress is the primary IP address of the machine
                 type: string
-              ipAddresses:
-                description: IPAddresses contains all IP addresses assigned to the
-                  machine.
-                items:
-                  type: string
-                type: array
               lastUpdated:
-                description: LastUpdated is the timestamp of the last status update.
+                description: LastUpdated is the last time the status was updated
                 format: date-time
                 type: string
               macAddress:
-                description: MACAddress is the primary MAC address of the machine.
+                description: MACAddress is the MAC address of the machine
                 type: string
-              observedGeneration:
-                description: ObservedGeneration is the generation most recently observed
-                  by the controller.
-                format: int64
-                type: integer
               phase:
-                description: Phase represents the current lifecycle phase of the machine.
-                enum:
-                - Pending
-                - Creating
-                - Running
-                - Failed
-                - Deleting
-                - Deleted
-                - Unknown
+                description: Phase is the current phase of the machine
                 type: string
               providerID:
-                description: |-
-                  ProviderID is the provider-specific identifier for the machine.
-                  Format is provider-specific (e.g., Harvester VM UID, Nutanix VM UUID).
+                description: ProviderID is the provider-specific ID for the machine
                 type: string
             type: object
         type: object
