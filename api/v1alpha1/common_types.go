@@ -1,9 +1,12 @@
 /*
-Copyright 2026 Butler Labs.
+Copyright 2025 The Butler Authors.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,46 +16,87 @@ limitations under the License.
 
 package v1alpha1
 
-// ProviderReference references a ProviderConfig
+// ProviderReference references a ProviderConfig resource.
 type ProviderReference struct {
-	// Name of the ProviderConfig
+	// Name is the name of the ProviderConfig resource.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name"`
 
-	// Namespace of the ProviderConfig
+	// Namespace is the namespace of the ProviderConfig resource.
+	// If not specified, the namespace of the referencing resource is used.
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
 }
 
-// SecretReference references a Secret
+// SecretReference references a Secret resource.
 type SecretReference struct {
-	// Name of the secret
+	// Name is the name of the Secret.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name"`
 
-	// Namespace of the secret
+	// Namespace is the namespace of the Secret.
+	// If not specified, the namespace of the referencing resource is used.
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
 
-	// Key in the secret
+	// Key is the key within the Secret to reference.
+	// If not specified, the entire Secret data is used.
 	// +optional
 	Key string `json:"key,omitempty"`
 }
 
-// MachineRole defines the role of a machine
-// +kubebuilder:validation:Enum=control-plane;worker
-type MachineRole string
+// LocalObjectReference references a resource in the same namespace.
+type LocalObjectReference struct {
+	// Name is the name of the resource.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+}
 
+// Condition types following Kubernetes API conventions.
+// See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
 const (
-	MachineRoleControlPlane MachineRole = "control-plane"
-	MachineRoleWorker       MachineRole = "worker"
+	// ConditionTypeReady indicates the resource is ready for use.
+	ConditionTypeReady = "Ready"
+
+	// ConditionTypeProgressing indicates the resource is making progress toward Ready.
+	ConditionTypeProgressing = "Progressing"
+
+	// ConditionTypeDegraded indicates the resource is in a degraded state.
+	ConditionTypeDegraded = "Degraded"
 )
 
-// MachinePhase defines the phase of a machine
-type MachinePhase string
-
+// Condition reasons for MachineRequest.
 const (
-	MachinePhasePending  MachinePhase = "Pending"
-	MachinePhaseCreating MachinePhase = "Creating"
-	MachinePhaseRunning  MachinePhase = "Running"
-	MachinePhaseFailed   MachinePhase = "Failed"
-	MachinePhaseDeleting MachinePhase = "Deleting"
+	// ReasonPending indicates the request is waiting to be processed.
+	ReasonPending = "Pending"
+
+	// ReasonCreating indicates the resource is being created.
+	ReasonCreating = "Creating"
+
+	// ReasonCreated indicates the resource was successfully created.
+	ReasonCreated = "Created"
+
+	// ReasonRunning indicates the resource is running.
+	ReasonRunning = "Running"
+
+	// ReasonWaitingForIP indicates waiting for IP address assignment.
+	ReasonWaitingForIP = "WaitingForIP"
+
+	// ReasonFailed indicates the operation failed.
+	ReasonFailed = "Failed"
+
+	// ReasonDeleting indicates the resource is being deleted.
+	ReasonDeleting = "Deleting"
+
+	// ReasonDeleted indicates the resource was deleted.
+	ReasonDeleted = "Deleted"
+
+	// ReasonProviderError indicates an error from the infrastructure provider.
+	ReasonProviderError = "ProviderError"
+
+	// ReasonInvalidConfiguration indicates invalid configuration.
+	ReasonInvalidConfiguration = "InvalidConfiguration"
 )

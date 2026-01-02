@@ -11,15 +11,19 @@ spec:
     kind: ProviderConfig
     listKind: ProviderConfigList
     plural: providerconfigs
+    shortNames:
+    - pc
     singular: providerconfig
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.provider
+    - description: Infrastructure provider type
+      jsonPath: .spec.provider
       name: Provider
       type: string
-    - jsonPath: .status.ready
-      name: Ready
+    - description: Configuration validated
+      jsonPath: .status.validated
+      name: Validated
       type: boolean
     - jsonPath: .metadata.creationTimestamp
       name: Age
@@ -27,7 +31,10 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ProviderConfig is the Schema for the providerconfigs API
+        description: |-
+          ProviderConfig defines the configuration for an infrastructure provider.
+          It contains credentials and provider-specific settings needed to create
+          and manage virtual machines.
         properties:
           apiVersion:
             description: |-
@@ -47,153 +54,168 @@ spec:
           metadata:
             type: object
           spec:
-            description: ProviderConfigSpec defines the desired state of ProviderConfig
+            description: ProviderConfigSpec defines the desired state of ProviderConfig.
             properties:
-              harvester:
-                description: Harvester contains Harvester-specific configuration
+              credentialsRef:
+                description: |-
+                  CredentialsRef references the Secret containing provider credentials.
+                  The Secret must contain the appropriate keys for the provider type:
+                  - harvester: "kubeconfig" (Harvester kubeconfig)
+                  - nutanix: "username", "password"
+                  - proxmox: "username", "password" or "token"
                 properties:
-                  imageName:
-                    description: ImageName is the Talos image name in Harvester
+                  key:
+                    description: |-
+                      Key is the key within the Secret to reference.
+                      If not specified, the entire Secret data is used.
                     type: string
-                  kubeconfigSecretRef:
-                    description: KubeconfigSecretRef references a secret containing
-                      the Harvester kubeconfig
-                    properties:
-                      key:
-                        description: Key in the secret
-                        type: string
-                      name:
-                        description: Name of the secret
-                        type: string
-                      namespace:
-                        description: Namespace of the secret
-                        type: string
-                    required:
-                    - name
-                    type: object
+                  name:
+                    description: Name is the name of the Secret.
+                    minLength: 1
+                    type: string
                   namespace:
-                    default: default
-                    description: Namespace is the Harvester namespace for VMs
-                    type: string
-                  networkName:
-                    description: NetworkName is the Harvester network name
+                    description: |-
+                      Namespace is the namespace of the Secret.
+                      If not specified, the namespace of the referencing resource is used.
                     type: string
                 required:
-                - imageName
-                - kubeconfigSecretRef
+                - name
+                type: object
+              harvester:
+                description: |-
+                  Harvester contains Harvester-specific configuration.
+                  Required when provider is "harvester".
+                properties:
+                  endpoint:
+                    description: |-
+                      Endpoint is the Harvester API server URL.
+                      If not specified, extracted from the kubeconfig.
+                    type: string
+                  imageName:
+                    description: |-
+                      ImageName is the default OS image in "namespace/name" format.
+                      Used when MachineRequest doesn't specify an image.
+                    type: string
+                  namespace:
+                    default: default
+                    description: Namespace is the Harvester namespace for VM resources.
+                    type: string
+                  networkName:
+                    description: NetworkName is the VM network in "namespace/name"
+                      format.
+                    pattern: ^[a-z0-9-]+/[a-z0-9-]+$
+                    type: string
+                  storageClassName:
+                    description: StorageClassName is the default storage class for
+                      VM disks.
+                    type: string
+                required:
                 - networkName
                 type: object
               nutanix:
-                description: Nutanix contains Nutanix-specific configuration
+                description: |-
+                  Nutanix contains Nutanix-specific configuration.
+                  Required when provider is "nutanix".
                 properties:
                   clusterUUID:
-                    description: ClusterUUID is the Nutanix cluster UUID
+                    description: ClusterUUID is the target Nutanix cluster UUID.
                     type: string
-                  credentialsSecretRef:
-                    description: CredentialsSecretRef references a secret containing
-                      username/password
-                    properties:
-                      key:
-                        description: Key in the secret
-                        type: string
-                      name:
-                        description: Name of the secret
-                        type: string
-                      namespace:
-                        description: Namespace of the secret
-                        type: string
-                    required:
-                    - name
-                    type: object
                   endpoint:
-                    description: Endpoint is the Prism Central endpoint URL
+                    description: Endpoint is the Prism Central API URL.
+                    pattern: ^https?://
                     type: string
                   imageUUID:
-                    description: ImageUUID is the Talos image UUID
+                    description: |-
+                      ImageUUID is the default OS image UUID.
+                      Used when MachineRequest doesn't specify an image.
                     type: string
                   insecure:
-                    description: Insecure allows insecure TLS connections
+                    default: false
+                    description: Insecure allows insecure TLS connections.
                     type: boolean
+                  port:
+                    default: 9440
+                    description: Port is the Prism Central API port.
+                    format: int32
+                    type: integer
+                  storageContainerUUID:
+                    description: StorageContainerUUID is the storage container for
+                      VM disks.
+                    type: string
                   subnetUUID:
-                    description: SubnetUUID is the Nutanix subnet UUID
+                    description: SubnetUUID is the network subnet UUID for VMs.
                     type: string
                 required:
                 - clusterUUID
-                - credentialsSecretRef
                 - endpoint
-                - imageUUID
                 - subnetUUID
                 type: object
               provider:
-                description: Provider is the type of infrastructure provider
+                description: Provider specifies the infrastructure provider type.
                 enum:
                 - harvester
                 - nutanix
                 - proxmox
                 type: string
               proxmox:
-                description: Proxmox contains Proxmox-specific configuration
+                description: |-
+                  Proxmox contains Proxmox-specific configuration.
+                  Required when provider is "proxmox".
                 properties:
-                  credentialsSecretRef:
-                    description: CredentialsSecretRef references a secret containing
-                      username/password or API token
-                    properties:
-                      key:
-                        description: Key in the secret
-                        type: string
-                      name:
-                        description: Name of the secret
-                        type: string
-                      namespace:
-                        description: Namespace of the secret
-                        type: string
-                    required:
-                    - name
-                    type: object
                   endpoint:
-                    description: Endpoint is the Proxmox API endpoint URL
+                    description: Endpoint is the Proxmox API URL.
+                    pattern: ^https?://
                     type: string
                   insecure:
-                    description: Insecure allows insecure TLS connections
+                    default: false
+                    description: Insecure allows insecure TLS connections.
                     type: boolean
-                  node:
-                    description: Node is the Proxmox node name
-                    type: string
-                  storageLocation:
-                    description: StorageLocation is the storage location for VMs
+                  nodes:
+                    description: Nodes is the list of Proxmox nodes available for
+                      VM placement.
+                    items:
+                      type: string
+                    minItems: 1
+                    type: array
+                  storage:
+                    description: Storage is the storage location for VM disks.
                     type: string
                   templateID:
-                    description: TemplateID is the VM template to clone
+                    description: TemplateID is the VM template ID to clone.
+                    format: int32
                     type: integer
                   vmidRange:
-                    description: VMIDRange defines the range for VM IDs
+                    description: VMIDRange defines the range of VM IDs to use.
                     properties:
                       end:
-                        description: End is the ending VM ID
+                        description: End is the last VM ID in the range.
+                        format: int32
+                        minimum: 100
                         type: integer
                       start:
-                        description: Start is the starting VM ID
+                        description: Start is the first VM ID in the range.
+                        format: int32
+                        minimum: 100
                         type: integer
                     required:
                     - end
                     - start
                     type: object
                 required:
-                - credentialsSecretRef
                 - endpoint
-                - node
-                - storageLocation
-                - templateID
-                - vmidRange
+                - nodes
+                - storage
                 type: object
             required:
+            - credentialsRef
             - provider
             type: object
           status:
-            description: ProviderConfigStatus defines the observed state of ProviderConfig
+            description: ProviderConfigStatus defines the observed state of ProviderConfig.
             properties:
               conditions:
-                description: Conditions represent the latest observations
+                description: Conditions represent the latest available observations
+                  of the ProviderConfig's state.
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -249,15 +271,21 @@ spec:
                   - type
                   type: object
                 type: array
-              lastUpdated:
-                description: LastUpdated is the last time the status was updated
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              lastValidationTime:
+                description: LastValidationTime is the timestamp of the last successful
+                  validation.
                 format: date-time
                 type: string
-              message:
-                description: Message provides additional status information
+              providerVersion:
+                description: ProviderVersion is the detected version of the infrastructure
+                  provider.
                 type: string
-              ready:
-                description: Ready indicates the provider is ready to be used
+              validated:
+                description: Validated indicates whether the provider configuration
+                  has been validated.
                 type: boolean
             type: object
         type: object
