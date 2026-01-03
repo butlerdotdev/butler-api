@@ -1,0 +1,9 @@
+apiVersion: butler.butlerlabs.dev/v1alpha1
+kind: TenantAddon
+metadata:
+  labels:
+    app.kubernetes.io/name: butler-api
+    app.kubernetes.io/managed-by: kustomize
+  name: tenantaddon-sample
+spec:
+  # TODO(user): Add fields here

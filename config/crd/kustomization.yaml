@@ -4,6 +4,10 @@
 resources:
 - bases/butler.butlerlabs.dev_machinerequests.yaml
 - bases/butler.butlerlabs.dev_providerconfigs.yaml
+- bases/butler.butlerlabs.dev_butlerconfigs.yaml
+- bases/butler.butlerlabs.dev_teams.yaml
+- bases/butler.butlerlabs.dev_tenantclusters.yaml
+- bases/butler.butlerlabs.dev_tenantaddons.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

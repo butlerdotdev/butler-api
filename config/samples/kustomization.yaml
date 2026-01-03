@@ -3,4 +3,8 @@ resources:
 - butler_v1alpha1_clusterbootstrap.yaml
 - butler_v1alpha1_machinerequest.yaml
 - butler_v1alpha1_providerconfig.yaml
+- butler_v1alpha1_butlerconfig.yaml
+- butler_v1alpha1_team.yaml
+- butler_v1alpha1_tenantcluster.yaml
+- butler_v1alpha1_tenantaddon.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples
