@@ -33,4 +33,34 @@ resources:
   kind: ProviderConfig
   path: github.com/butlerdotdev/butler-api/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+  domain: butlerlabs.dev
+  group: butler
+  kind: ButlerConfig
+  path: github.com/butlerdotdev/butler-api/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+  domain: butlerlabs.dev
+  group: butler
+  kind: Team
+  path: github.com/butlerdotdev/butler-api/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: butlerlabs.dev
+  group: butler
+  kind: TenantCluster
+  path: github.com/butlerdotdev/butler-api/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: butlerlabs.dev
+  group: butler
+  kind: TenantAddon
+  path: github.com/butlerdotdev/butler-api/api/v1alpha1
+  version: v1alpha1
 version: "3"

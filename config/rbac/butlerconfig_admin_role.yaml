@@ -1,0 +1,27 @@
+# This rule is not used by the project butler-api itself.
+# It is provided to allow the cluster admin to help manage permissions for users.
+#
+# Grants full permissions ('*') over butler.butlerlabs.dev.
+# This role is intended for users authorized to modify roles and bindings within the cluster,
+# enabling them to delegate specific permissions to other users or groups as needed.
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: butler-api
+    app.kubernetes.io/managed-by: kustomize
+  name: butlerconfig-admin-role
+rules:
+- apiGroups:
+  - butler.butlerlabs.dev
+  resources:
+  - butlerconfigs
+  verbs:
+  - '*'
+- apiGroups:
+  - butler.butlerlabs.dev
+  resources:
+  - butlerconfigs/status
+  verbs:
+  - get
