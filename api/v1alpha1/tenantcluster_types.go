@@ -105,6 +105,23 @@ type ControlPlaneSpec struct {
 	// If not specified, the default DataStore is used.
 	// +optional
 	DataStoreRef *LocalObjectReference `json:"dataStoreRef,omitempty"`
+
+	// ServiceType for the control plane endpoint.
+	// +kubebuilder:validation:Enum=LoadBalancer;NodePort;ClusterIP
+	// +kubebuilder:default="LoadBalancer"
+	// +optional
+	ServiceType string `json:"serviceType,omitempty"`
+
+	// CertSANs are additional Subject Alternative Names for the API server certificate.
+	// Use this to add custom DNS names or IPs for API server access.
+	// +optional
+	CertSANs []string `json:"certSANs,omitempty"`
+
+	// ExternalCloudProvider enables --cloud-provider=external on apiserver and controller-manager.
+	// Required for Harvester, vSphere, and other infrastructure providers.
+	// +kubebuilder:default=true
+	// +optional
+	ExternalCloudProvider *bool `json:"externalCloudProvider,omitempty"`
 }
 
 // WorkersSpec configures worker nodes.

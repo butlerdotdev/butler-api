@@ -209,6 +209,13 @@ spec:
               controlPlane:
                 description: ControlPlane configures the Kamaji-hosted control plane.
                 properties:
+                  certSANs:
+                    description: |-
+                      CertSANs are additional Subject Alternative Names for the API server certificate.
+                      Use this to add custom DNS names or IPs for API server access.
+                    items:
+                      type: string
+                    type: array
                   dataStoreRef:
                     description: |-
                       DataStoreRef references the Kamaji DataStore to use.
@@ -221,6 +228,12 @@ spec:
                     required:
                     - name
                     type: object
+                  externalCloudProvider:
+                    default: true
+                    description: |-
+                      ExternalCloudProvider enables --cloud-provider=external on apiserver and controller-manager.
+                      Required for Harvester, vSphere, and other infrastructure providers.
+                    type: boolean
                   replicas:
                     default: 1
                     description: |-
@@ -230,6 +243,14 @@ spec:
                     maximum: 3
                     minimum: 1
                     type: integer
+                  serviceType:
+                    default: LoadBalancer
+                    description: ServiceType for the control plane endpoint.
+                    enum:
+                    - LoadBalancer
+                    - NodePort
+                    - ClusterIP
+                    type: string
                 type: object
               kubernetesVersion:
                 description: KubernetesVersion is the target Kubernetes version.
