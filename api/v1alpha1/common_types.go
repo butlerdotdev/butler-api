@@ -68,6 +68,51 @@ type NamespacedObjectReference struct {
 	Namespace string `json:"namespace"`
 }
 
+// Kubernetes recommended labels.
+// See: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
+const (
+	// LabelManagedBy indicates the tool managing the resource.
+	// Uses the Kubernetes standard label for interoperability with
+	// kubectl, Helm, ArgoCD, Prometheus, and other CNCF tools.
+	LabelManagedBy = "app.kubernetes.io/managed-by"
+)
+
+// Butler-specific labels for resource tracking and multi-tenancy.
+const (
+	// LabelTeam identifies the team that owns a resource.
+	LabelTeam = "butler.butlerlabs.dev/team"
+
+	// LabelTenant identifies the tenant cluster.
+	LabelTenant = "butler.butlerlabs.dev/tenant"
+
+	// LabelSourceNamespace indicates the source namespace for generated resources.
+	LabelSourceNamespace = "butler.butlerlabs.dev/source-namespace"
+
+	// LabelSourceName indicates the source name for generated resources.
+	LabelSourceName = "butler.butlerlabs.dev/source-name"
+)
+
+// Butler-specific annotations.
+const (
+	// AnnotationDescription provides a human-readable description.
+	AnnotationDescription = "butler.butlerlabs.dev/description"
+
+	// AnnotationCreatedBy indicates who created the resource.
+	AnnotationCreatedBy = "butler.butlerlabs.dev/created-by"
+)
+
+// Finalizers.
+const (
+	// FinalizerTeam is the finalizer for Team resources.
+	FinalizerTeam = "butler.butlerlabs.dev/team"
+
+	// FinalizerTenantCluster is the finalizer for TenantCluster resources.
+	FinalizerTenantCluster = "butler.butlerlabs.dev/tenantcluster"
+
+	// FinalizerTenantAddon is the finalizer for TenantAddon resources.
+	FinalizerTenantAddon = "butler.butlerlabs.dev/tenantaddon"
+)
+
 // Condition types following Kubernetes API conventions.
 // See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
 const (
@@ -124,43 +169,4 @@ const (
 
 	// ReasonValidationFailed indicates validation failed.
 	ReasonValidationFailed = "ValidationFailed"
-)
-
-// Butler-specific labels.
-const (
-	// LabelTeam identifies the team that owns a resource.
-	LabelTeam = "butler.butlerlabs.dev/team"
-
-	// LabelTenant identifies the tenant cluster.
-	LabelTenant = "butler.butlerlabs.dev/tenant"
-
-	// LabelManagedBy indicates the resource is managed by Butler.
-	LabelManagedBy = "butler.butlerlabs.dev/managed-by"
-
-	// LabelSourceNamespace indicates the source namespace for generated resources.
-	LabelSourceNamespace = "butler.butlerlabs.dev/source-namespace"
-
-	// LabelSourceName indicates the source name for generated resources.
-	LabelSourceName = "butler.butlerlabs.dev/source-name"
-)
-
-// Butler-specific annotations.
-const (
-	// AnnotationDescription provides a human-readable description.
-	AnnotationDescription = "butler.butlerlabs.dev/description"
-
-	// AnnotationCreatedBy indicates who created the resource.
-	AnnotationCreatedBy = "butler.butlerlabs.dev/created-by"
-)
-
-// Finalizers.
-const (
-	// FinalizerTeam is the finalizer for Team resources.
-	FinalizerTeam = "butler.butlerlabs.dev/team"
-
-	// FinalizerTenantCluster is the finalizer for TenantCluster resources.
-	FinalizerTenantCluster = "butler.butlerlabs.dev/tenantcluster"
-
-	// FinalizerTenantAddon is the finalizer for TenantAddon resources.
-	FinalizerTenantAddon = "butler.butlerlabs.dev/tenantaddon"
 )
