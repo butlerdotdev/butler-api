@@ -17,6 +17,10 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"encoding/binary"
+	"fmt"
+	"net"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -131,7 +135,8 @@ type ClusterBootstrapNetworkSpec struct {
 	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$`
 	ServiceCIDR string `json:"serviceCIDR"`
 
-	// VIP is the virtual IP for the control plane endpoint
+	// VIP is the virtual IP for the control plane endpoint (kube-vip)
+	// This IP is used ONLY for kube-apiserver HA and must NOT be in LoadBalancerPool
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
 	VIP string `json:"vip"`
@@ -139,6 +144,111 @@ type ClusterBootstrapNetworkSpec struct {
 	// VIPInterface is the network interface for the VIP (optional, auto-detected)
 	// +optional
 	VIPInterface string `json:"vipInterface,omitempty"`
+
+	// LoadBalancerPool defines the IP range for MetalLB LoadBalancer services
+	// This range must NOT include the VIP address to avoid conflicts between
+	// kube-vip (control plane) and MetalLB (services)
+	// +optional
+	LoadBalancerPool *LoadBalancerPoolSpec `json:"loadBalancerPool,omitempty"`
+}
+
+// LoadBalancerPoolSpec defines an IP address range for LoadBalancer services
+type LoadBalancerPoolSpec struct {
+	// Start is the first IP in the pool (inclusive)
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
+	Start string `json:"start"`
+
+	// End is the last IP in the pool (inclusive)
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
+	End string `json:"end"`
+}
+
+// Validate validates the LoadBalancerPoolSpec
+func (p *LoadBalancerPoolSpec) Validate() error {
+	if p == nil {
+		return nil
+	}
+
+	startIP := net.ParseIP(p.Start)
+	if startIP == nil {
+		return fmt.Errorf("invalid start IP: %s", p.Start)
+	}
+
+	endIP := net.ParseIP(p.End)
+	if endIP == nil {
+		return fmt.Errorf("invalid end IP: %s", p.End)
+	}
+
+	if ipToUint32(startIP) > ipToUint32(endIP) {
+		return fmt.Errorf("start IP %s must be <= end IP %s", p.Start, p.End)
+	}
+
+	return nil
+}
+
+// ContainsIP checks if the given IP is within the pool range
+func (p *LoadBalancerPoolSpec) ContainsIP(ip string) bool {
+	if p == nil {
+		return false
+	}
+
+	checkIP := net.ParseIP(ip)
+	if checkIP == nil {
+		return false
+	}
+
+	startIP := net.ParseIP(p.Start)
+	endIP := net.ParseIP(p.End)
+	if startIP == nil || endIP == nil {
+		return false
+	}
+
+	checkVal := ipToUint32(checkIP)
+	startVal := ipToUint32(startIP)
+	endVal := ipToUint32(endIP)
+
+	return checkVal >= startVal && checkVal <= endVal
+}
+
+// ToAddressRange returns the pool as "start-end" string for MetalLB
+func (p *LoadBalancerPoolSpec) ToAddressRange() string {
+	if p == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s-%s", p.Start, p.End)
+}
+
+// ipToUint32 converts an IPv4 address to a uint32
+func ipToUint32(ip net.IP) uint32 {
+	ip = ip.To4()
+	if ip == nil {
+		return 0
+	}
+	return binary.BigEndian.Uint32(ip)
+}
+
+// Validate validates the network configuration
+func (n *ClusterBootstrapNetworkSpec) Validate() error {
+	vip := net.ParseIP(n.VIP)
+	if vip == nil {
+		return fmt.Errorf("invalid VIP address: %s", n.VIP)
+	}
+
+	if n.LoadBalancerPool != nil {
+		if err := n.LoadBalancerPool.Validate(); err != nil {
+			return fmt.Errorf("invalid loadBalancerPool: %w", err)
+		}
+
+		if n.LoadBalancerPool.ContainsIP(n.VIP) {
+			return fmt.Errorf("VIP %s must not be within loadBalancerPool range %s-%s; "+
+				"kube-vip and MetalLB will conflict if they share IPs",
+				n.VIP, n.LoadBalancerPool.Start, n.LoadBalancerPool.End)
+		}
+	}
+
+	return nil
 }
 
 // ClusterBootstrapTalosSpec defines Talos configuration for bootstrap
@@ -261,6 +371,8 @@ type LoadBalancerAddonSpec struct {
 	Type string `json:"type,omitempty"`
 
 	// AddressPool defines the IP address pool for LoadBalancer services
+	// DEPRECATED: Use spec.network.loadBalancerPool instead for proper validation.
+	// If both are set, spec.network.loadBalancerPool takes precedence.
 	// +optional
 	AddressPool string `json:"addressPool,omitempty"`
 }
@@ -375,7 +487,7 @@ type CAPIAddonSpec struct {
 // CAPIInfraProviderSpec defines an infrastructure provider configuration
 type CAPIInfraProviderSpec struct {
 	// Name is the provider name
-	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox
+	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox;kubevirt
 	Name string `json:"name"`
 
 	// Version overrides the default provider version
@@ -599,4 +711,20 @@ func (s *ClusterBootstrapAddonsSpec) GetButlerControllerImage() string {
 	}
 
 	return image + ":" + version
+}
+
+// GetLoadBalancerAddressPool returns the address pool string for MetalLB
+// Prefers network.loadBalancerPool (validated), falls back to addons.loadBalancer.addressPool (legacy)
+func (c *ClusterBootstrap) GetLoadBalancerAddressPool() string {
+	// Prefer network.loadBalancerPool (new way with validation)
+	if c.Spec.Network.LoadBalancerPool != nil {
+		return c.Spec.Network.LoadBalancerPool.ToAddressRange()
+	}
+
+	// Fall back to addons.loadBalancer.addressPool (legacy, deprecated)
+	if c.Spec.Addons.LoadBalancer != nil && c.Spec.Addons.LoadBalancer.AddressPool != "" {
+		return c.Spec.Addons.LoadBalancer.AddressPool
+	}
+
+	return ""
 }
