@@ -433,6 +433,14 @@ type TenantClusterStatus struct {
 	// ObservedState is the observed state of the cluster.
 	// +optional
 	ObservedState *ObservedClusterState `json:"observedState,omitempty"`
+
+	// WorkerNodesReady is the count of ready worker nodes
+	// +optional
+	WorkerNodesReady int32 `json:"workerNodesReady,omitempty"`
+
+	// WorkerNodesDesired is the desired count of worker nodes
+	// +optional
+	WorkerNodesDesired int32 `json:"workerNodesDesired,omitempty"`
 }
 
 // ObservedClusterState captures the current state of the cluster.
