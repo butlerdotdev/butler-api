@@ -1,0 +1,90 @@
+# Creates a PR in butler-charts for review.
+name: Sync CRDs to butler-charts
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'api/**/types.go'
+      - 'api/**/*_types.go'
+      - 'config/crd/bases/**'
+  workflow_dispatch:
+
+env:
+  GO_VERSION: '1.23'
+  CHARTS_REPO: butlerdotdev/butler-charts
+
+jobs:
+  sync-crds:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout butler-api
+        uses: actions/checkout@v4
+        with:
+          path: butler-api
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: butler-api/go.sum
+
+      - name: Generate CRDs
+        working-directory: butler-api
+        run: |
+          make generate
+          make manifests
+          echo "=== Generated CRDs ==="
+          ls -la config/crd/bases/
+
+      - name: Checkout butler-charts
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CHARTS_REPO }}
+          path: butler-charts
+          token: ${{ secrets.CHARTS_SYNC_PAT }}
+
+      - name: Sync CRDs
+        working-directory: butler-charts
+        env:
+          BUTLER_API_PATH: ${{ github.workspace }}/butler-api
+        run: |
+          chmod +x ./hack/sync-crds.sh
+          ./hack/sync-crds.sh
+
+      - name: Check for changes
+        id: changes
+        working-directory: butler-charts
+        run: |
+          if git diff --quiet charts/butler-crds/templates/; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            git diff --stat charts/butler-crds/templates/
+          fi
+
+      - name: Create Pull Request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          path: butler-charts
+          token: ${{ secrets.CHARTS_SYNC_PAT }}
+          commit-message: "chore(crds): sync CRDs from butler-api@${{ github.sha }}"
+          branch: sync-crds/${{ github.sha }}
+          delete-branch: true
+          title: "chore(crds): sync CRDs from butler-api"
+          body: |
+            ## Automated CRD Sync
+            
+            Source: `butler-api` commit [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+            
+            ### Checklist
+            - [ ] Review CRD changes
+            - [ ] Test with `helm template butler-crds ./charts/butler-crds`
+          labels: |
+            automated
+            crds
