@@ -327,6 +327,10 @@ type ClusterBootstrapAddonsSpec struct {
 	// ButlerController defines butler-controller configuration
 	// +optional
 	ButlerController *ButlerControllerAddonSpec `json:"butlerController,omitempty"`
+
+	// Console defines butler-console configuration
+	// +optional
+	Console *ConsoleAddonSpec `json:"console,omitempty"`
 }
 
 // CNIAddonSpec defines CNI configuration
@@ -466,6 +470,48 @@ type ControlPlaneProviderAddonSpec struct {
 	Version string `json:"version,omitempty"`
 }
 
+// ConsoleAddonSpec defines Butler Console configuration
+type ConsoleAddonSpec struct {
+	// Enabled controls whether butler-console is installed
+	// +kubebuilder:default=true
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Version is the butler-console version (image tag)
+	// +kubebuilder:default="latest"
+	// +optional
+	Version string `json:"version,omitempty"`
+
+	// Ingress configures ingress for the console
+	// +optional
+	Ingress *ConsoleIngressSpec `json:"ingress,omitempty"`
+}
+
+// ConsoleIngressSpec defines ingress configuration for the console
+type ConsoleIngressSpec struct {
+	// Enabled controls whether to create an Ingress resource
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+
+	// Host is the hostname for the console (e.g., "butler.example.com")
+	// If not set and ingress is enabled, uses "butler.<cluster-name>.local"
+	// +optional
+	Host string `json:"host,omitempty"`
+
+	// ClassName is the ingress class (e.g., "traefik", "nginx")
+	// If not set, uses cluster default
+	// +optional
+	ClassName string `json:"className,omitempty"`
+
+	// TLS enables TLS termination
+	// +optional
+	TLS bool `json:"tls,omitempty"`
+
+	// TLSSecretName is the name of the TLS secret (auto-generated if empty and TLS enabled)
+	// +optional
+	TLSSecretName string `json:"tlsSecretName,omitempty"`
+}
+
 // CAPIAddonSpec defines Cluster API configuration
 type CAPIAddonSpec struct {
 	// Enabled controls whether CAPI is installed
@@ -535,6 +581,10 @@ type ClusterBootstrapStatus struct {
 	// TalosConfig contains the base64-encoded talosconfig for the cluster
 	// +optional
 	TalosConfig string `json:"talosconfig,omitempty"`
+
+	// ConsoleURL is the URL to access the Butler Console
+	// +optional
+	ConsoleURL string `json:"consoleURL,omitempty"`
 
 	// Machines contains the status of each machine
 	// +optional
@@ -727,4 +777,28 @@ func (c *ClusterBootstrap) GetLoadBalancerAddressPool() string {
 	}
 
 	return ""
+}
+
+// IsConsoleEnabled returns whether butler-console should be installed
+func (s *ClusterBootstrapAddonsSpec) IsConsoleEnabled() bool {
+	if s == nil || s.Console == nil || s.Console.Enabled == nil {
+		return false // Default disabled - user must opt-in
+	}
+	return *s.Console.Enabled
+}
+
+// GetConsoleVersion returns the console version to install
+func (s *ClusterBootstrapAddonsSpec) GetConsoleVersion() string {
+	if s == nil || s.Console == nil || s.Console.Version == "" {
+		return "latest"
+	}
+	return s.Console.Version
+}
+
+// GetConsoleIngressHost returns the ingress host, with fallback to cluster name
+func (s *ClusterBootstrapAddonsSpec) GetConsoleIngressHost(clusterName string) string {
+	if s == nil || s.Console == nil || s.Console.Ingress == nil || s.Console.Ingress.Host == "" {
+		return fmt.Sprintf("butler.%s.local", clusterName)
+	}
+	return s.Console.Ingress.Host
 }
