@@ -89,6 +89,11 @@ type TenantClusterSpec struct {
 	// Additional addons can be added via TenantAddon resources.
 	// +optional
 	Addons AddonsSpec `json:"addons,omitempty"`
+
+	// InfrastructureOverride allows overriding provider-specific settings.
+	// These take precedence over ProviderConfig defaults.
+	// +optional
+	InfrastructureOverride *InfrastructureOverride `json:"infrastructureOverride,omitempty"`
 }
 
 // ControlPlaneSpec configures the Kamaji-hosted control plane.
@@ -175,6 +180,70 @@ type OSSpec struct {
 	// Overrides Type and Version if specified.
 	// +optional
 	ImageRef string `json:"imageRef,omitempty"`
+}
+
+// InfrastructureOverride allows overriding provider-specific settings per-cluster.
+type InfrastructureOverride struct {
+	// Harvester contains Harvester-specific overrides.
+	// +optional
+	Harvester *HarvesterOverride `json:"harvester,omitempty"`
+
+	// Nutanix contains Nutanix-specific overrides.
+	// +optional
+	Nutanix *NutanixOverride `json:"nutanix,omitempty"`
+
+	// Proxmox contains Proxmox-specific overrides.
+	// +optional
+	Proxmox *ProxmoxOverride `json:"proxmox,omitempty"`
+}
+
+// HarvesterOverride contains Harvester-specific settings.
+type HarvesterOverride struct {
+	// Namespace is the Harvester namespace for VMs.
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
+
+	// NetworkName is the Harvester network to use (format: namespace/name).
+	// +optional
+	NetworkName string `json:"networkName,omitempty"`
+
+	// ImageName is the VM image to use (format: namespace/name).
+	// +optional
+	ImageName string `json:"imageName,omitempty"`
+}
+
+// NutanixOverride contains Nutanix-specific settings.
+type NutanixOverride struct {
+	// ClusterUUID is the Nutanix cluster UUID.
+	// +optional
+	ClusterUUID string `json:"clusterUUID,omitempty"`
+
+	// SubnetUUID is the Nutanix subnet UUID.
+	// +optional
+	SubnetUUID string `json:"subnetUUID,omitempty"`
+
+	// ImageUUID is the Nutanix image UUID.
+	// +optional
+	ImageUUID string `json:"imageUUID,omitempty"`
+
+	// StorageContainerUUID is the Nutanix storage container UUID.
+	// +optional
+	StorageContainerUUID string `json:"storageContainerUUID,omitempty"`
+}
+
+// ProxmoxOverride contains Proxmox-specific settings.
+type ProxmoxOverride struct {
+	// Node is the Proxmox node to deploy VMs on.
+	// +optional
+	Node string `json:"node,omitempty"`
+
+	// Storage is the Proxmox storage to use.
+	// +optional
+	Storage string `json:"storage,omitempty"`
+
+	// TemplateID is the VM template ID.
+	// +optional
+	TemplateID int `json:"templateID,omitempty"`
 }
 
 // NetworkingSpec configures cluster networking.
