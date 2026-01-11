@@ -138,19 +138,27 @@ type TenantAddonStatus struct {
 	Message string `json:"message,omitempty"`
 }
 
-// HelmReleaseStatus contains Helm release information.
+// HelmReleaseStatus contains information about the Helm release
 type HelmReleaseStatus struct {
-	// Name is the Helm release name.
-	Name string `json:"name"`
+	// Name is the name of the Helm release
+	// +optional
+	Name string `json:"name,omitempty"`
 
-	// Namespace is the release namespace.
-	Namespace string `json:"namespace"`
+	// Namespace is the namespace where the release is installed
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
 
-	// Revision is the Helm revision number.
-	Revision int32 `json:"revision"`
+	// Version is the chart version
+	// +optional
+	Version string `json:"version,omitempty"`
 
-	// Status is the Helm release status.
-	Status string `json:"status"`
+	// Revision is the Helm release revision number
+	// +optional
+	Revision int `json:"revision,omitempty"`
+
+	// Status is the Helm release status (deployed, failed, etc.)
+	// +optional
+	Status string `json:"status,omitempty"`
 }
 
 // TenantAddon condition types.
