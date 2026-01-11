@@ -38,6 +38,24 @@ const (
 	ClusterBootstrapPhaseFailed               ClusterBootstrapPhase = "Failed"
 )
 
+// ClusterTopology defines the cluster topology type
+type ClusterTopology string
+
+const (
+	// ClusterTopologySingleNode is a single-node cluster where the control plane also runs workloads.
+	// This is useful for development, testing, and edge deployments where resources are limited.
+	// In single-node mode:
+	// - Only 1 control plane node is created
+	// - Workers section is ignored
+	// - Control plane is configured to allow scheduling workloads
+	// - etcd runs as a single member (not HA)
+	ClusterTopologySingleNode ClusterTopology = "single-node"
+
+	// ClusterTopologyHA is a high-availability cluster with separate control plane and worker nodes.
+	// This is the default and recommended mode for production deployments.
+	ClusterTopologyHA ClusterTopology = "ha"
+)
+
 // ClusterBootstrapSpec defines the desired state of ClusterBootstrap
 type ClusterBootstrapSpec struct {
 	// Provider is the infrastructure provider type (harvester, nutanix, proxmox)
@@ -79,11 +97,20 @@ type ClusterBootstrapClusterSpec struct {
 	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
 	Name string `json:"name"`
 
+	// Topology defines the cluster topology
+	// - "single-node": Single control plane node that also runs workloads (no workers needed)
+	// - "ha": High-availability with separate control plane and worker nodes (default)
+	// +kubebuilder:validation:Enum=single-node;ha
+	// +kubebuilder:default=ha
+	// +optional
+	Topology ClusterTopology `json:"topology,omitempty"`
+
 	// ControlPlane defines control plane node configuration
 	// +kubebuilder:validation:Required
 	ControlPlane ClusterBootstrapNodePool `json:"controlPlane"`
 
 	// Workers defines worker node configuration
+	// Ignored when topology is "single-node"
 	// +optional
 	Workers *ClusterBootstrapNodePool `json:"workers,omitempty"`
 }
@@ -92,6 +119,7 @@ type ClusterBootstrapClusterSpec struct {
 // Uses same units as MachineRequest (MemoryMB, DiskGB) for consistency
 type ClusterBootstrapNodePool struct {
 	// Replicas is the number of nodes in this pool
+	// For single-node topology, controlPlane.replicas is forced to 1
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=10
@@ -137,6 +165,7 @@ type ClusterBootstrapNetworkSpec struct {
 
 	// VIP is the virtual IP for the control plane endpoint (kube-vip)
 	// This IP is used ONLY for kube-apiserver HA and must NOT be in LoadBalancerPool
+	// For single-node topology, the VIP still provides a stable endpoint for the API server
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
 	VIP string `json:"vip"`
@@ -328,7 +357,7 @@ type ClusterBootstrapAddonsSpec struct {
 	// +optional
 	ButlerController *ButlerControllerAddonSpec `json:"butlerController,omitempty"`
 
-	// Console defines butler-console configuration
+	// Console defines Butler Console configuration
 	// +optional
 	Console *ConsoleAddonSpec `json:"console,omitempty"`
 }
@@ -353,7 +382,7 @@ type CNIAddonSpec struct {
 // StorageAddonSpec defines storage configuration
 type StorageAddonSpec struct {
 	// Type is the storage type
-	// +kubebuilder:validation:Enum=longhorn;linstor;none
+	// +kubebuilder:validation:Enum=longhorn;none
 	// +kubebuilder:default=longhorn
 	Type string `json:"type,omitempty"`
 
@@ -361,10 +390,11 @@ type StorageAddonSpec struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// DefaultReplicaCount is the default number of replicas (Longhorn)
+	// ReplicaCount is the default replica count for Longhorn volumes
+	// For single-node topology, this is automatically set to 1
 	// +optional
-	// +kubebuilder:default=2
-	DefaultReplicaCount int32 `json:"defaultReplicaCount,omitempty"`
+	// +kubebuilder:default=3
+	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 }
 
 // LoadBalancerAddonSpec defines load balancer configuration
@@ -374,9 +404,8 @@ type LoadBalancerAddonSpec struct {
 	// +kubebuilder:default=metallb
 	Type string `json:"type,omitempty"`
 
-	// AddressPool defines the IP address pool for LoadBalancer services
-	// DEPRECATED: Use spec.network.loadBalancerPool instead for proper validation.
-	// If both are set, spec.network.loadBalancerPool takes precedence.
+	// AddressPool is the IP address range for MetalLB
+	// DEPRECATED: Use network.loadBalancerPool instead for proper validation
 	// +optional
 	AddressPool string `json:"addressPool,omitempty"`
 }
@@ -389,32 +418,14 @@ type GitOpsAddonSpec struct {
 	Type string `json:"type,omitempty"`
 
 	// Enabled controls whether GitOps is installed
-	// +kubebuilder:default=false
 	// +optional
+	// +kubebuilder:default=true
 	Enabled *bool `json:"enabled,omitempty"`
-
-	// Version is the addon version
-	// +optional
-	Version string `json:"version,omitempty"`
-
-	// GitRepository is the repository URL for GitOps
-	// +optional
-	GitRepository string `json:"gitRepository,omitempty"`
-
-	// GitBranch is the branch to track
-	// +optional
-	// +kubebuilder:default=main
-	GitBranch string `json:"gitBranch,omitempty"`
-
-	// GitPath is the path within the repository
-	// +optional
-	// +kubebuilder:default=clusters/management
-	GitPath string `json:"gitPath,omitempty"`
 }
 
 // ControlPlaneHAAddonSpec defines control plane HA configuration
 type ControlPlaneHAAddonSpec struct {
-	// Type is the HA type
+	// Type is the control plane HA type
 	// +kubebuilder:validation:Enum=kube-vip;none
 	// +kubebuilder:default=kube-vip
 	Type string `json:"type,omitempty"`
@@ -427,11 +438,11 @@ type ControlPlaneHAAddonSpec struct {
 // CertManagerAddonSpec defines cert-manager configuration
 type CertManagerAddonSpec struct {
 	// Enabled controls whether cert-manager is installed
-	// +kubebuilder:default=true
 	// +optional
+	// +kubebuilder:default=true
 	Enabled *bool `json:"enabled,omitempty"`
 
-	// Version is the cert-manager version
+	// Version is the addon version
 	// +optional
 	Version string `json:"version,omitempty"`
 }
@@ -439,16 +450,16 @@ type CertManagerAddonSpec struct {
 // IngressAddonSpec defines ingress controller configuration
 type IngressAddonSpec struct {
 	// Type is the ingress controller type
-	// +kubebuilder:validation:Enum=traefik;none
+	// +kubebuilder:validation:Enum=traefik;nginx;none
 	// +kubebuilder:default=traefik
 	Type string `json:"type,omitempty"`
 
 	// Enabled controls whether the ingress controller is installed
-	// +kubebuilder:default=true
 	// +optional
+	// +kubebuilder:default=true
 	Enabled *bool `json:"enabled,omitempty"`
 
-	// Version is the ingress controller version
+	// Version is the addon version
 	// +optional
 	Version string `json:"version,omitempty"`
 }
@@ -461,55 +472,13 @@ type ControlPlaneProviderAddonSpec struct {
 	Type string `json:"type,omitempty"`
 
 	// Enabled controls whether Kamaji is installed
-	// +kubebuilder:default=true
 	// +optional
+	// +kubebuilder:default=true
 	Enabled *bool `json:"enabled,omitempty"`
 
-	// Version is the Kamaji version
+	// Version is the addon version
 	// +optional
 	Version string `json:"version,omitempty"`
-}
-
-// ConsoleAddonSpec defines Butler Console configuration
-type ConsoleAddonSpec struct {
-	// Enabled controls whether butler-console is installed
-	// +kubebuilder:default=true
-	// +optional
-	Enabled *bool `json:"enabled,omitempty"`
-
-	// Version is the butler-console version (image tag)
-	// +kubebuilder:default="latest"
-	// +optional
-	Version string `json:"version,omitempty"`
-
-	// Ingress configures ingress for the console
-	// +optional
-	Ingress *ConsoleIngressSpec `json:"ingress,omitempty"`
-}
-
-// ConsoleIngressSpec defines ingress configuration for the console
-type ConsoleIngressSpec struct {
-	// Enabled controls whether to create an Ingress resource
-	// +optional
-	Enabled bool `json:"enabled,omitempty"`
-
-	// Host is the hostname for the console (e.g., "butler.example.com")
-	// If not set and ingress is enabled, uses "butler.<cluster-name>.local"
-	// +optional
-	Host string `json:"host,omitempty"`
-
-	// ClassName is the ingress class (e.g., "traefik", "nginx")
-	// If not set, uses cluster default
-	// +optional
-	ClassName string `json:"className,omitempty"`
-
-	// TLS enables TLS termination
-	// +optional
-	TLS bool `json:"tls,omitempty"`
-
-	// TLSSecretName is the name of the TLS secret (auto-generated if empty and TLS enabled)
-	// +optional
-	TLSSecretName string `json:"tlsSecretName,omitempty"`
 }
 
 // CAPIAddonSpec defines Cluster API configuration
@@ -533,7 +502,7 @@ type CAPIAddonSpec struct {
 // CAPIInfraProviderSpec defines an infrastructure provider configuration
 type CAPIInfraProviderSpec struct {
 	// Name is the provider name
-	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox;kubevirt
+	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox
 	Name string `json:"name"`
 
 	// Version overrides the default provider version
@@ -562,6 +531,49 @@ type ButlerControllerAddonSpec struct {
 	// +optional
 	// +kubebuilder:default="ghcr.io/butlerdotdev/butler-controller"
 	Image string `json:"image,omitempty"`
+}
+
+// ConsoleAddonSpec defines Butler Console configuration
+type ConsoleAddonSpec struct {
+	// Enabled controls whether butler-console is installed
+	// +kubebuilder:default=false
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// Version is the console version (image tag)
+	// +kubebuilder:default="latest"
+	// +optional
+	Version string `json:"version,omitempty"`
+
+	// Ingress defines ingress configuration for the console
+	// +optional
+	Ingress *ConsoleIngressSpec `json:"ingress,omitempty"`
+}
+
+// ConsoleIngressSpec defines ingress configuration for the Butler Console
+type ConsoleIngressSpec struct {
+	// Enabled controls whether to create an Ingress resource
+	// +kubebuilder:default=false
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+
+	// Host is the hostname for the console (e.g., "butler.example.com")
+	// If not set and ingress is enabled, uses "butler.<cluster-name>.local"
+	// +optional
+	Host string `json:"host,omitempty"`
+
+	// ClassName is the ingress class (e.g., "traefik", "nginx")
+	// +optional
+	ClassName string `json:"className,omitempty"`
+
+	// TLS enables TLS termination
+	// +kubebuilder:default=false
+	// +optional
+	TLS bool `json:"tls,omitempty"`
+
+	// TLSSecretName is the name of the TLS secret
+	// +optional
+	TLSSecretName string `json:"tlsSecretName,omitempty"`
 }
 
 // ClusterBootstrapStatus defines the observed state of ClusterBootstrap
@@ -643,6 +655,7 @@ type ClusterBootstrapMachineStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=cb
 // +kubebuilder:printcolumn:name="Cluster",type="string",JSONPath=".spec.cluster.name"
+// +kubebuilder:printcolumn:name="Topology",type="string",JSONPath=".spec.cluster.topology"
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Endpoint",type="string",JSONPath=".status.controlPlaneEndpoint"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
@@ -681,6 +694,33 @@ func (c *ClusterBootstrap) IsFailed() bool {
 	return c.Status.Phase == ClusterBootstrapPhaseFailed
 }
 
+// IsSingleNode returns true if this is a single-node topology
+func (c *ClusterBootstrap) IsSingleNode() bool {
+	return c.Spec.Cluster.Topology == ClusterTopologySingleNode
+}
+
+// GetExpectedMachineCount returns the expected number of machines based on topology
+func (c *ClusterBootstrap) GetExpectedMachineCount() int {
+	if c.IsSingleNode() {
+		// Single-node: only 1 control plane, ignore workers
+		return 1
+	}
+	// HA: control plane replicas + worker replicas
+	count := int(c.Spec.Cluster.ControlPlane.Replicas)
+	if c.Spec.Cluster.Workers != nil {
+		count += int(c.Spec.Cluster.Workers.Replicas)
+	}
+	return count
+}
+
+// GetControlPlaneReplicas returns the effective control plane replicas based on topology
+func (c *ClusterBootstrap) GetControlPlaneReplicas() int32 {
+	if c.IsSingleNode() {
+		return 1 // Single-node always has exactly 1 control plane
+	}
+	return c.Spec.Cluster.ControlPlane.Replicas
+}
+
 // GetControlPlaneIPs returns the IP addresses of control plane nodes
 func (c *ClusterBootstrap) GetControlPlaneIPs() []string {
 	var ips []string
@@ -705,10 +745,7 @@ func (c *ClusterBootstrap) GetWorkerIPs() []string {
 
 // AllMachinesRunning returns true if all machines are in Running phase with IPs
 func (c *ClusterBootstrap) AllMachinesRunning() bool {
-	expectedCount := int(c.Spec.Cluster.ControlPlane.Replicas)
-	if c.Spec.Cluster.Workers != nil {
-		expectedCount += int(c.Spec.Cluster.Workers.Replicas)
-	}
+	expectedCount := c.GetExpectedMachineCount()
 
 	if len(c.Status.Machines) != expectedCount {
 		return false
@@ -801,4 +838,15 @@ func (s *ClusterBootstrapAddonsSpec) GetConsoleIngressHost(clusterName string) s
 		return fmt.Sprintf("butler.%s.local", clusterName)
 	}
 	return s.Console.Ingress.Host
+}
+
+// GetStorageReplicaCount returns the effective storage replica count based on topology
+func (c *ClusterBootstrap) GetStorageReplicaCount() int32 {
+	if c.IsSingleNode() {
+		return 1 // Single-node can only have 1 replica
+	}
+	if c.Spec.Addons.Storage != nil && c.Spec.Addons.Storage.ReplicaCount != nil {
+		return *c.Spec.Addons.Storage.ReplicaCount
+	}
+	return 3 // Default for HA
 }
