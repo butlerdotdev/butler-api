@@ -17,20 +17,27 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // TeamRole defines the role a user or group has within a Team.
-// +kubebuilder:validation:Enum=admin;member
+// +kubebuilder:validation:Enum=admin;operator;viewer
 type TeamRole string
 
 const (
-	// TeamRoleAdmin has full access to create, modify, and delete resources.
+	// TeamRoleAdmin has full access to manage the team and all its resources.
+	// Can: create/delete clusters, manage team members, change settings
 	TeamRoleAdmin TeamRole = "admin"
 
-	// TeamRoleMember can create and view resources but has limited deletion rights.
-	TeamRoleMember TeamRole = "member"
+	// TeamRoleOperator can create and manage clusters but cannot manage team settings.
+	// Can: create/delete clusters, scale, install addons
+	// Cannot: manage team members, change team settings
+	TeamRoleOperator TeamRole = "operator"
+
+	// TeamRoleViewer has read-only access to team resources.
+	// Can: view clusters, view kubeconfigs, view logs
+	// Cannot: create/modify/delete anything
+	TeamRoleViewer TeamRole = "viewer"
 )
 
 // TeamSpec defines the desired state of Team.
@@ -47,21 +54,57 @@ type TeamSpec struct {
 	// +optional
 	Access TeamAccess `json:"access,omitempty"`
 
-	// ResourceLimits defines the resource quotas for this Team.
+	// ResourceLimits defines the resource quotas and restrictions for this Team.
 	// If not specified, defaults from ButlerConfig are used.
+	// If ButlerConfig has no defaults, no limits are enforced.
 	// +optional
-	ResourceLimits *ResourceLimits `json:"resourceLimits,omitempty"`
+	ResourceLimits *TeamResourceLimits `json:"resourceLimits,omitempty"`
 
 	// ProviderConfigRef references a Team-specific ProviderConfig.
 	// If not specified, the platform default is used.
 	// +optional
 	ProviderConfigRef *LocalObjectReference `json:"providerConfigRef,omitempty"`
+
+	// ClusterDefaults defines default values for new clusters in this team.
+	// +optional
+	ClusterDefaults *ClusterDefaults `json:"clusterDefaults,omitempty"`
+}
+
+// ClusterDefaults defines default values for new TenantClusters.
+type ClusterDefaults struct {
+	// KubernetesVersion is the default K8s version for new clusters.
+	// +optional
+	KubernetesVersion string `json:"kubernetesVersion,omitempty"`
+
+	// WorkerCount is the default number of worker nodes.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	WorkerCount *int32 `json:"workerCount,omitempty"`
+
+	// WorkerCPU is the default CPU cores per worker.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	WorkerCPU *int32 `json:"workerCPU,omitempty"`
+
+	// WorkerMemoryGi is the default memory per worker in Gi.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	WorkerMemoryGi *int32 `json:"workerMemoryGi,omitempty"`
+
+	// WorkerDiskGi is the default disk size per worker in Gi.
+	// +optional
+	// +kubebuilder:validation:Minimum=10
+	WorkerDiskGi *int32 `json:"workerDiskGi,omitempty"`
+
+	// DefaultAddons are addons automatically installed on new clusters.
+	// +optional
+	DefaultAddons []string `json:"defaultAddons,omitempty"`
 }
 
 // TeamAccess defines users and groups that have access to the Team.
 type TeamAccess struct {
 	// Users is a list of users with access to this Team.
-	// Users are identified by their OIDC subject or username.
+	// Users are identified by their email address.
 	// +optional
 	Users []TeamUser `json:"users,omitempty"`
 
@@ -73,13 +116,15 @@ type TeamAccess struct {
 
 // TeamUser represents a user with access to a Team.
 type TeamUser struct {
-	// Name is the user identifier (email, OIDC subject, or username).
+	// Name is the user identifier (email address).
+	// For internal users, this is the email from User.spec.email.
+	// For SSO users, this is the email from the OIDC token.
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name"`
 
 	// Role is the user's role within the Team.
-	// +kubebuilder:default="member"
+	// +kubebuilder:default="viewer"
 	// +optional
 	Role TeamRole `json:"role,omitempty"`
 }
@@ -93,7 +138,8 @@ type TeamGroup struct {
 	Name string `json:"name"`
 
 	// Role is the group's role within the Team.
-	// +kubebuilder:default="member"
+	// All members of the group inherit this role.
+	// +kubebuilder:default="viewer"
 	// +optional
 	Role TeamRole `json:"role,omitempty"`
 }
@@ -140,28 +186,22 @@ type TeamStatus struct {
 	// +optional
 	ClusterCount int32 `json:"clusterCount,omitempty"`
 
+	// MemberCount is the total number of users with access to this Team.
+	// +optional
+	MemberCount int32 `json:"memberCount,omitempty"`
+
 	// ResourceUsage shows the current resource usage for this Team.
 	// +optional
-	ResourceUsage *ResourceUsage `json:"resourceUsage,omitempty"`
-}
+	ResourceUsage *TeamResourceUsage `json:"resourceUsage,omitempty"`
 
-// ResourceUsage shows current resource consumption.
-type ResourceUsage struct {
-	// Clusters is the number of TenantClusters.
+	// QuotaStatus indicates whether the team is within quota.
 	// +optional
-	Clusters int32 `json:"clusters,omitempty"`
+	// +kubebuilder:validation:Enum=OK;Warning;Exceeded
+	QuotaStatus string `json:"quotaStatus,omitempty"`
 
-	// Workers is the total number of worker nodes.
+	// QuotaMessage provides details about quota status.
 	// +optional
-	Workers int32 `json:"workers,omitempty"`
-
-	// TotalCPU is the total CPU cores allocated.
-	// +optional
-	TotalCPU *resource.Quantity `json:"totalCPU,omitempty"`
-
-	// TotalMemory is the total memory allocated.
-	// +optional
-	TotalMemory *resource.Quantity `json:"totalMemory,omitempty"`
+	QuotaMessage string `json:"quotaMessage,omitempty"`
 }
 
 // Team condition types.
@@ -174,6 +214,9 @@ const (
 
 	// TeamConditionReady indicates the Team is fully ready.
 	TeamConditionReady = "Ready"
+
+	// TeamConditionQuotaExceeded indicates the Team has exceeded quota.
+	TeamConditionQuotaExceeded = "QuotaExceeded"
 )
 
 // +kubebuilder:object:root=true
@@ -183,6 +226,7 @@ const (
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Current phase"
 // +kubebuilder:printcolumn:name="Namespace",type="string",JSONPath=".status.namespace",description="Team namespace"
 // +kubebuilder:printcolumn:name="Clusters",type="integer",JSONPath=".status.clusterCount",description="Number of clusters"
+// +kubebuilder:printcolumn:name="Quota",type="string",JSONPath=".status.quotaStatus",description="Quota status"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // Team is the Schema for the teams API.
