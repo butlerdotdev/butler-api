@@ -1,0 +1,177 @@
+---
+# Example: Google Workspace IdentityProvider
+#
+# Prerequisites:
+# 1. Create OAuth 2.0 Client ID in Google Cloud Console
+#    - Go to: https://console.cloud.google.com/apis/credentials
+#    - Create OAuth 2.0 Client ID (Web application)
+#    - Add authorized redirect URI: https://butler.example.com/api/auth/callback
+# 2. Create Secret with client secret
+#
+apiVersion: v1
+kind: Secret
+metadata:
+  name: google-oidc-secret
+  namespace: butler-system
+type: Opaque
+stringData:
+  client-secret: "GOCSPX-your-client-secret-here"
+---
+apiVersion: butler.butlerlabs.dev/v1alpha1
+kind: IdentityProvider
+metadata:
+  name: google-workspace
+spec:
+  type: oidc
+  displayName: "Google Workspace"
+  oidc:
+    # Google's OIDC issuer URL
+    issuerURL: "https://accounts.google.com"
+    
+    # Your OAuth client ID from Google Cloud Console
+    clientID: "123456789.apps.googleusercontent.com"
+    
+    # Reference to the Secret containing client secret
+    clientSecretRef:
+      name: google-oidc-secret
+      namespace: butler-system
+      key: client-secret
+    
+    # Your Butler Console's callback URL
+    redirectURL: "https://butler.example.com/api/auth/callback"
+    
+    # Restrict to your Google Workspace domain
+    hostedDomain: "example.com"
+    
+    # Default scopes (openid, email, profile are added automatically)
+    # Google doesn't include groups in tokens by default
+    scopes: []
+    
+    # Google uses standard claims
+    emailClaim: "email"
+    
+    # Google doesn't return groups in tokens by default
+    # Leave empty to disable group extraction
+    groupsClaim: ""
+
+  # Group mapping is optional for Google since groups aren't in tokens
+  # Use manual Team membership instead, or implement Google Cloud Identity API
+  groupMapping: []
+---
+# Example: Microsoft Entra ID (Azure AD) IdentityProvider
+#
+# Prerequisites:
+# 1. Register application in Azure Portal
+#    - Go to: Azure Portal > Microsoft Entra ID > App registrations
+#    - New registration
+#    - Add redirect URI: https://butler.example.com/api/auth/callback
+#    - Note: Application (client) ID and Directory (tenant) ID
+# 2. Create client secret in Certificates & secrets
+# 3. Configure API permissions: openid, email, profile
+# 4. (Optional) Configure groups claim in Token configuration
+#
+apiVersion: v1
+kind: Secret
+metadata:
+  name: entra-oidc-secret
+  namespace: butler-system
+type: Opaque
+stringData:
+  client-secret: "your-client-secret-here"
+---
+apiVersion: butler.butlerlabs.dev/v1alpha1
+kind: IdentityProvider
+metadata:
+  name: microsoft-entra
+spec:
+  type: oidc
+  displayName: "Microsoft"
+  oidc:
+    # Replace {tenant-id} with your Azure AD tenant ID
+    issuerURL: "https://login.microsoftonline.com/{tenant-id}/v2.0"
+    
+    # Your Application (client) ID
+    clientID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    
+    clientSecretRef:
+      name: entra-oidc-secret
+      namespace: butler-system
+      key: client-secret
+    
+    redirectURL: "https://butler.example.com/api/auth/callback"
+    
+    # Microsoft includes groups in tokens if configured
+    groupsClaim: "groups"
+    emailClaim: "email"
+
+  # Map Azure AD groups to Butler Teams
+  groupMapping:
+    - idpGroup: "aaaaaaaa-bbbb-cccc-dddd-111111111111"  # Azure AD group object ID
+      team: "platform-team"
+      role: admin
+    - idpGroup: "aaaaaaaa-bbbb-cccc-dddd-222222222222"
+      team: "platform-team"
+      role: operator
+    - idpGroup: "aaaaaaaa-bbbb-cccc-dddd-333333333333"
+      team: "dev-team"
+      role: viewer
+---
+# Example: Okta IdentityProvider
+#
+# Prerequisites:
+# 1. Create OIDC application in Okta Admin Console
+#    - Applications > Create App Integration > OIDC - OpenID Connect > Web Application
+#    - Add sign-in redirect URI: https://butler.example.com/api/auth/callback
+# 2. Note Client ID and Client Secret
+# 3. Assign users/groups to the application
+#
+apiVersion: v1
+kind: Secret
+metadata:
+  name: okta-oidc-secret
+  namespace: butler-system
+type: Opaque
+stringData:
+  client-secret: "your-client-secret-here"
+---
+apiVersion: butler.butlerlabs.dev/v1alpha1
+kind: IdentityProvider
+metadata:
+  name: okta
+spec:
+  type: oidc
+  displayName: "Okta"
+  oidc:
+    # Replace {domain} with your Okta domain
+    issuerURL: "https://{domain}.okta.com"
+    
+    clientID: "0oaxxxxxxxxxx"
+    
+    clientSecretRef:
+      name: okta-oidc-secret
+      namespace: butler-system
+      key: client-secret
+    
+    redirectURL: "https://butler.example.com/api/auth/callback"
+    
+    # Request groups scope for group claims
+    scopes:
+      - openid
+      - email
+      - profile
+      - groups
+    
+    groupsClaim: "groups"
+    emailClaim: "email"
+
+  # Map Okta groups to Butler Teams
+  groupMapping:
+    - idpGroup: "platform-admins"
+      team: "platform-team"
+      role: admin
+    - idpGroup: "platform-engineers"
+      team: "platform-team"
+      role: operator
+    - idpGroup: "developers"
+      team: "dev-team"
+      role: viewer
