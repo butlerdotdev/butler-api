@@ -20,7 +20,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// UserSpec defines the desired state of a Butler internal user.
+// UserAuthType defines how a user authenticates.
+// +kubebuilder:validation:Enum=sso;internal
+type UserAuthType string
+
+const (
+	// UserAuthTypeSSO indicates the user authenticates via SSO/OIDC.
+	UserAuthTypeSSO UserAuthType = "sso"
+
+	// UserAuthTypeInternal indicates the user authenticates with email/password.
+	UserAuthTypeInternal UserAuthType = "internal"
+)
+
+// UserSpec defines the desired state of a Butler user.
 // Note: Passwords are NEVER stored in spec - users set their own via invite flow.
 type UserSpec struct {
 	// Email is the user's email address, used for Team membership matching.
@@ -40,6 +52,24 @@ type UserSpec struct {
 	// Avatar is an optional URL to the user's avatar image.
 	// +optional
 	Avatar string `json:"avatar,omitempty"`
+
+	// AuthType indicates how this user authenticates.
+	// SSO users are created automatically on first login.
+	// Internal users are created by admins and use email/password.
+	// +kubebuilder:default="internal"
+	// +optional
+	AuthType UserAuthType `json:"authType,omitempty"`
+
+	// SSOProvider is the name of the SSO provider (e.g., "Google", "Okta").
+	// Only set for SSO users.
+	// +optional
+	SSOProvider string `json:"ssoProvider,omitempty"`
+
+	// SSOSubject is the unique subject identifier from the SSO provider.
+	// This is the "sub" claim from the OIDC token.
+	// Only set for SSO users.
+	// +optional
+	SSOSubject string `json:"ssoSubject,omitempty"`
 }
 
 // UserStatus defines the observed state of User.
@@ -50,23 +80,28 @@ type UserStatus struct {
 
 	// PasswordSecretRef references the Secret containing the bcrypt password hash.
 	// This is automatically created when the user sets their password.
+	// Only used for internal users.
 	// +optional
 	PasswordSecretRef *SecretReference `json:"passwordSecretRef,omitempty"`
 
 	// InviteTokenHash is the SHA256 hash of the invite token.
 	// The raw token is only shown once when the user is created.
+	// Only used for internal users.
 	// +optional
 	InviteTokenHash string `json:"inviteTokenHash,omitempty"`
 
 	// InviteExpiresAt is when the invite token expires.
+	// Only used for internal users.
 	// +optional
 	InviteExpiresAt *metav1.Time `json:"inviteExpiresAt,omitempty"`
 
 	// InviteSentAt is when the invite was generated.
+	// Only used for internal users.
 	// +optional
 	InviteSentAt *metav1.Time `json:"inviteSentAt,omitempty"`
 
 	// PasswordChangedAt is when the password was last set/changed.
+	// Only used for internal users.
 	// +optional
 	PasswordChangedAt *metav1.Time `json:"passwordChangedAt,omitempty"`
 
@@ -80,10 +115,12 @@ type UserStatus struct {
 
 	// FailedLoginAttempts is the number of consecutive failed login attempts.
 	// Resets to 0 on successful login.
+	// Only used for internal users.
 	// +optional
 	FailedLoginAttempts int32 `json:"failedLoginAttempts,omitempty"`
 
 	// LockedUntil is set when the account is temporarily locked due to failed attempts.
+	// Only used for internal users.
 	// +optional
 	LockedUntil *metav1.Time `json:"lockedUntil,omitempty"`
 
@@ -141,14 +178,20 @@ const (
 // +kubebuilder:resource:scope=Cluster,shortName=usr
 // +kubebuilder:printcolumn:name="Email",type=string,JSONPath=`.spec.email`
 // +kubebuilder:printcolumn:name="Display Name",type=string,JSONPath=`.spec.displayName`
+// +kubebuilder:printcolumn:name="Auth",type=string,JSONPath=`.spec.authType`
 // +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 // +kubebuilder:printcolumn:name="Last Login",type=date,JSONPath=`.status.lastLoginTime`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
-// User represents a Butler internal user account.
-// Internal users authenticate with email/password when SSO is not configured.
+// User represents a Butler user account.
+// Users can authenticate via SSO (OIDC) or with email/password (internal).
 //
-// User Creation Flow:
+// SSO User Flow:
+// 1. User clicks "Sign in with Google/Okta/etc"
+// 2. Butler creates User CRD automatically on first login
+// 3. User is matched to Teams by email address
+//
+// Internal User Flow:
 // 1. Admin creates User with email (no password)
 // 2. Butler generates invite token, returns URL to admin
 // 3. Admin shares invite URL with user (via Slack, email, etc.)
@@ -174,4 +217,26 @@ type UserList struct {
 
 func init() {
 	SchemeBuilder.Register(&User{}, &UserList{})
+}
+
+// Helper methods
+
+// IsSSO returns true if this is an SSO user.
+func (u *User) IsSSO() bool {
+	return u.Spec.AuthType == UserAuthTypeSSO
+}
+
+// IsInternal returns true if this is an internal user.
+func (u *User) IsInternal() bool {
+	return u.Spec.AuthType == UserAuthTypeInternal || u.Spec.AuthType == ""
+}
+
+// IsActive returns true if the user can log in.
+func (u *User) IsActive() bool {
+	return u.Status.Phase == UserPhaseActive && !u.Spec.Disabled
+}
+
+// IsDisabled returns true if the user is disabled.
+func (u *User) IsDisabled() bool {
+	return u.Spec.Disabled || u.Status.Phase == UserPhaseDisabled
 }
