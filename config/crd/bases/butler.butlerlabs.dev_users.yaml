@@ -23,6 +23,9 @@ spec:
     - jsonPath: .spec.displayName
       name: Display Name
       type: string
+    - jsonPath: .spec.authType
+      name: Auth
+      type: string
     - jsonPath: .status.phase
       name: Phase
       type: string
@@ -36,10 +39,15 @@ spec:
     schema:
       openAPIV3Schema:
         description: |-
-          User represents a Butler internal user account.
-          Internal users authenticate with email/password when SSO is not configured.
+          User represents a Butler user account.
+          Users can authenticate via SSO (OIDC) or with email/password (internal).
 
-          User Creation Flow:
+          SSO User Flow:
+          1. User clicks "Sign in with Google/Okta/etc"
+          2. Butler creates User CRD automatically on first login
+          3. User is matched to Teams by email address
+
+          Internal User Flow:
           1. Admin creates User with email (no password)
           2. Butler generates invite token, returns URL to admin
           3. Admin shares invite URL with user (via Slack, email, etc.)
@@ -66,9 +74,19 @@ spec:
             type: object
           spec:
             description: |-
-              UserSpec defines the desired state of a Butler internal user.
+              UserSpec defines the desired state of a Butler user.
               Note: Passwords are NEVER stored in spec - users set their own via invite flow.
             properties:
+              authType:
+                default: internal
+                description: |-
+                  AuthType indicates how this user authenticates.
+                  SSO users are created automatically on first login.
+                  Internal users are created by admins and use email/password.
+                enum:
+                - sso
+                - internal
+                type: string
               avatar:
                 description: Avatar is an optional URL to the user's avatar image.
                 type: string
@@ -83,6 +101,17 @@ spec:
                 description: Email is the user's email address, used for Team membership
                   matching.
                 format: email
+                type: string
+              ssoProvider:
+                description: |-
+                  SSOProvider is the name of the SSO provider (e.g., "Google", "Okta").
+                  Only set for SSO users.
+                type: string
+              ssoSubject:
+                description: |-
+                  SSOSubject is the unique subject identifier from the SSO provider.
+                  This is the "sub" claim from the OIDC token.
+                  Only set for SSO users.
                 type: string
             required:
             - email
@@ -151,20 +180,26 @@ spec:
                 description: |-
                   FailedLoginAttempts is the number of consecutive failed login attempts.
                   Resets to 0 on successful login.
+                  Only used for internal users.
                 format: int32
                 type: integer
               inviteExpiresAt:
-                description: InviteExpiresAt is when the invite token expires.
+                description: |-
+                  InviteExpiresAt is when the invite token expires.
+                  Only used for internal users.
                 format: date-time
                 type: string
               inviteSentAt:
-                description: InviteSentAt is when the invite was generated.
+                description: |-
+                  InviteSentAt is when the invite was generated.
+                  Only used for internal users.
                 format: date-time
                 type: string
               inviteTokenHash:
                 description: |-
                   InviteTokenHash is the SHA256 hash of the invite token.
                   The raw token is only shown once when the user is created.
+                  Only used for internal users.
                 type: string
               lastLoginTime:
                 description: LastLoginTime is when the user last successfully logged
@@ -172,8 +207,9 @@ spec:
                 format: date-time
                 type: string
               lockedUntil:
-                description: LockedUntil is set when the account is temporarily locked
-                  due to failed attempts.
+                description: |-
+                  LockedUntil is set when the account is temporarily locked due to failed attempts.
+                  Only used for internal users.
                 format: date-time
                 type: string
               loginCount:
@@ -181,13 +217,16 @@ spec:
                 format: int64
                 type: integer
               passwordChangedAt:
-                description: PasswordChangedAt is when the password was last set/changed.
+                description: |-
+                  PasswordChangedAt is when the password was last set/changed.
+                  Only used for internal users.
                 format: date-time
                 type: string
               passwordSecretRef:
                 description: |-
                   PasswordSecretRef references the Secret containing the bcrypt password hash.
                   This is automatically created when the user sets their password.
+                  Only used for internal users.
                 properties:
                   key:
                     description: |-
