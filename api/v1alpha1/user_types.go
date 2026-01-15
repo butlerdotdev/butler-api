@@ -70,6 +70,16 @@ type UserSpec struct {
 	// Only set for SSO users.
 	// +optional
 	SSOSubject string `json:"ssoSubject,omitempty"`
+
+	// IsPlatformAdmin grants full platform access, bypassing team-based RBAC.
+	// Platform admins can:
+	// - Manage all teams, users, clusters, and providers
+	// - Access all resources regardless of team membership
+	// - Configure platform-wide settings
+	// Use sparingly - most users should use team-based access control.
+	// +optional
+	// +kubebuilder:default=false
+	IsPlatformAdmin bool `json:"isPlatformAdmin,omitempty"`
 }
 
 // UserStatus defines the observed state of User.
@@ -179,6 +189,7 @@ const (
 // +kubebuilder:printcolumn:name="Email",type=string,JSONPath=`.spec.email`
 // +kubebuilder:printcolumn:name="Display Name",type=string,JSONPath=`.spec.displayName`
 // +kubebuilder:printcolumn:name="Auth",type=string,JSONPath=`.spec.authType`
+// +kubebuilder:printcolumn:name="Platform Admin",type=boolean,JSONPath=`.spec.isPlatformAdmin`
 // +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
 // +kubebuilder:printcolumn:name="Last Login",type=date,JSONPath=`.status.lastLoginTime`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
@@ -198,6 +209,10 @@ const (
 // 4. User clicks link, sets their own password
 // 5. Password is hashed (bcrypt) and stored in a Secret
 // 6. User status changes from Pending to Active
+//
+// Platform Admin:
+// Users with spec.isPlatformAdmin=true have full platform access,
+// bypassing team-based RBAC. This should be used sparingly.
 type User struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -239,4 +254,9 @@ func (u *User) IsActive() bool {
 // IsDisabled returns true if the user is disabled.
 func (u *User) IsDisabled() bool {
 	return u.Spec.Disabled || u.Status.Phase == UserPhaseDisabled
+}
+
+// IsPlatformAdmin returns true if this user has platform admin privileges.
+func (u *User) IsPlatformAdmin() bool {
+	return u.Spec.IsPlatformAdmin
 }
