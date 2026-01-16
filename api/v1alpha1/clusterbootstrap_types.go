@@ -368,15 +368,18 @@ type CNIAddonSpec struct {
 	// +kubebuilder:validation:Enum=cilium;none
 	// +kubebuilder:default=cilium
 	Type string `json:"type,omitempty"`
-
 	// Version is the addon version
 	// +optional
 	Version string `json:"version,omitempty"`
-
 	// HubbleEnabled enables Hubble observability (Cilium only)
 	// +optional
 	// +kubebuilder:default=true
 	HubbleEnabled bool `json:"hubbleEnabled,omitempty"`
+	// GatewayAPIEnabled enables Gateway API support (Cilium only)
+	// Required for control plane SNI-based routing in Butler
+	// +optional
+	// +kubebuilder:default=true
+	GatewayAPIEnabled bool `json:"gatewayAPIEnabled,omitempty"`
 }
 
 // StorageAddonSpec defines storage configuration

@@ -150,6 +150,12 @@ spec:
                   cni:
                     description: CNI defines the CNI configuration
                     properties:
+                      gatewayAPIEnabled:
+                        default: true
+                        description: |-
+                          GatewayAPIEnabled enables Gateway API support (Cilium only)
+                          Required for control plane SNI-based routing in Butler
+                        type: boolean
                       hubbleEnabled:
                         default: true
                         description: HubbleEnabled enables Hubble observability (Cilium
