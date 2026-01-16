@@ -17,19 +17,19 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - description: Cluster phase
+    - description: Current lifecycle phase
       jsonPath: .status.phase
       name: Phase
       type: string
-    - description: Kubernetes version
+    - description: Target Kubernetes version
       jsonPath: .spec.kubernetesVersion
       name: K8s Version
       type: string
-    - description: Ready workers
+    - description: Ready worker count
       jsonPath: .status.observedState.workers.ready
       name: Workers
       type: string
-    - description: API endpoint
+    - description: API server endpoint
       jsonPath: .status.controlPlane.endpoint
       name: Endpoint
       type: string
@@ -41,7 +41,8 @@ spec:
       openAPIV3Schema:
         description: |-
           TenantCluster is the Schema for the tenantclusters API.
-          It represents a complete Kubernetes cluster managed by Butler.
+          It represents a complete Kubernetes cluster managed by Butler, including
+          a Kamaji-hosted control plane and worker nodes on the configured infrastructure.
         properties:
           apiVersion:
             description: |-
@@ -61,57 +62,99 @@ spec:
           metadata:
             type: object
           spec:
-            description: TenantClusterSpec defines the desired state of TenantCluster.
+            description: |-
+              TenantClusterSpec defines the desired state of TenantCluster.
+              A TenantCluster represents a complete Kubernetes cluster with hosted control plane
+              (via Kamaji) and worker nodes provisioned on the configured infrastructure provider.
             properties:
               addons:
                 description: |-
-                  Addons defines the initial addons to install.
-                  These are installed at cluster creation time.
-                  Additional addons can be added via TenantAddon resources.
+                  Addons defines the initial addons to install during cluster creation.
+                  These form the base platform capabilities (CNI, storage, ingress, etc.).
+                  Additional addons can be added later via TenantAddon resources.
                 properties:
+                  certManager:
+                    description: |-
+                      CertManager configures cert-manager for automatic certificate management.
+                      Provides TLS certificates for ingress and internal services.
+                    properties:
+                      enabled:
+                        default: true
+                        description: |-
+                          Enabled indicates whether cert-manager should be installed.
+                          Set to false to skip cert-manager installation if managing certificates externally.
+                        type: boolean
+                      values:
+                        description: |-
+                          Values are Helm values for cert-manager customization.
+                          See cert-manager Helm chart documentation for available options.
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      version:
+                        description: Version is the cert-manager version to install.
+                        type: string
+                    required:
+                    - version
+                    type: object
                   cni:
-                    description: CNI configures the Container Network Interface.
+                    description: |-
+                      CNI configures the Container Network Interface plugin.
+                      Required for pod networking. Cilium is the supported CNI.
                     properties:
                       provider:
                         default: cilium
-                        description: Provider is the CNI provider.
+                        description: |-
+                          Provider is the CNI implementation to use.
+                          Currently only Cilium is supported, providing eBPF-based networking
+                          with advanced features like network policies and observability.
                         enum:
                         - cilium
                         type: string
                       values:
-                        description: Values are Helm values for customization.
+                        description: |-
+                          Values are Helm values for Cilium customization.
+                          See Cilium Helm chart documentation for available options.
                         type: object
                         x-kubernetes-preserve-unknown-fields: true
                       version:
-                        description: Version is the addon version.
+                        description: Version is the Cilium version to install.
                         type: string
                     required:
                     - version
                     type: object
                   gitOps:
-                    description: GitOps configures GitOps tooling.
+                    description: |-
+                      GitOps configures GitOps tooling for declarative cluster management.
+                      Flux CD or Argo CD can be bootstrapped for continuous deployment.
                     properties:
                       provider:
-                        description: Provider is the GitOps provider.
+                        description: |-
+                          Provider is the GitOps tool to use.
+                          - fluxcd: CNCF graduated GitOps toolkit
+                          - argocd: Declarative GitOps CD for Kubernetes
                         enum:
                         - fluxcd
                         - argocd
                         type: string
                       repository:
-                        description: Repository configures the Git repository for
-                          GitOps.
+                        description: |-
+                          Repository configures the Git repository for GitOps synchronization.
+                          The cluster's desired state is pulled from this repository.
                         properties:
                           branch:
                             default: main
-                            description: Branch is the branch to use.
+                            description: Branch is the Git branch to synchronize from.
                             type: string
                           path:
-                            description: Path is the path within the repository for
-                              this cluster's manifests.
+                            description: |-
+                              Path is the directory path within the repository for this cluster's manifests.
+                              Useful for monorepos with multiple clusters (e.g., "clusters/production/my-cluster").
                             type: string
                           secretRef:
-                            description: SecretRef references the Secret containing
-                              Git credentials.
+                            description: |-
+                              SecretRef references a Secret containing Git credentials.
+                              Required for private repositories. The Secret should contain
+                              'username' and 'password' keys for HTTPS, or 'identity' for SSH.
                             properties:
                               name:
                                 description: Name is the name of the resource.
@@ -121,99 +164,129 @@ spec:
                             - name
                             type: object
                           url:
-                            description: URL is the Git repository URL.
+                            description: |-
+                              URL is the Git repository URL.
+                              Supports HTTPS and SSH URLs (e.g., "https://github.com/org/repo.git").
                             type: string
                         required:
                         - url
                         type: object
                       version:
-                        description: Version is the addon version.
+                        description: Version is the GitOps tool version to install.
                         type: string
                     type: object
                   ingress:
-                    description: Ingress configures the ingress controller.
+                    description: |-
+                      Ingress configures the ingress controller for HTTP/HTTPS routing.
+                      Traefik or NGINX can be used to expose services externally.
                     properties:
                       provider:
-                        description: Provider is the ingress provider.
+                        description: |-
+                          Provider is the ingress controller to use.
+                          - traefik: Modern cloud-native ingress with automatic HTTPS
+                          - nginx: Battle-tested ingress with extensive configuration options
                         enum:
                         - traefik
                         - nginx
                         type: string
                       values:
-                        description: Values are Helm values for customization.
+                        description: |-
+                          Values are Helm values for ingress controller customization.
+                          See the respective Helm chart documentation for available options.
                         type: object
                         x-kubernetes-preserve-unknown-fields: true
                       version:
-                        description: Version is the addon version.
+                        description: Version is the ingress controller version to
+                          install.
                         type: string
                     required:
                     - version
                     type: object
                   loadBalancer:
-                    description: LoadBalancer configures the load balancer.
+                    description: |-
+                      LoadBalancer configures the load balancer for services of type LoadBalancer.
+                      MetalLB is used to announce service IPs on the network.
                     properties:
                       addressPool:
-                        description: AddressPool defines the IP address pool for LoadBalancer
-                          services.
+                        description: |-
+                          AddressPool defines the IP address pool for LoadBalancer services.
+                          MetalLB will assign IPs from this range to services of type LoadBalancer.
+                          This is the preferred location for address pool configuration.
                         properties:
                           end:
-                            description: End is the last IP in the pool.
+                            description: End is the last IP address in the pool (inclusive).
                             type: string
                           start:
-                            description: Start is the first IP in the pool.
+                            description: Start is the first IP address in the pool
+                              (inclusive).
                             type: string
                         type: object
                       provider:
                         default: metallb
-                        description: Provider is the load balancer provider.
+                        description: |-
+                          Provider is the load balancer implementation to use.
+                          MetalLB provides LoadBalancer services in bare-metal environments.
                         enum:
                         - metallb
                         type: string
                       values:
-                        description: Values are Helm values for customization.
+                        description: |-
+                          Values are Helm values for MetalLB customization.
+                          See MetalLB Helm chart documentation for available options.
                         type: object
                         x-kubernetes-preserve-unknown-fields: true
                       version:
-                        description: Version is the addon version.
+                        description: Version is the MetalLB version to install.
                         type: string
                     required:
                     - version
                     type: object
                   storage:
-                    description: Storage configures storage provisioner.
+                    description: |-
+                      Storage configures persistent storage provisioning.
+                      Longhorn or LINSTOR provide replicated block storage for stateful workloads.
                     properties:
                       provider:
-                        description: Provider is the storage provider.
+                        description: |-
+                          Provider is the storage solution to use.
+                          - longhorn: Distributed block storage with replication and snapshots
+                          - linstor: DRBD-based storage with synchronous replication
                         enum:
                         - longhorn
                         - linstor
                         type: string
                       values:
-                        description: Values are Helm values for customization.
+                        description: |-
+                          Values are Helm values for storage provider customization.
+                          See the respective Helm chart documentation for available options.
                         type: object
                         x-kubernetes-preserve-unknown-fields: true
                       version:
-                        description: Version is the addon version.
+                        description: Version is the storage provider version to install.
                         type: string
                     required:
                     - version
                     type: object
                 type: object
               controlPlane:
-                description: ControlPlane configures the Kamaji-hosted control plane.
+                description: |-
+                  ControlPlane configures the Kamaji-hosted control plane.
+                  Kamaji runs control plane components as pods in the management cluster,
+                  providing efficient multi-tenancy without dedicated control plane VMs.
                 properties:
                   certSANs:
                     description: |-
                       CertSANs are additional Subject Alternative Names for the API server certificate.
-                      When using Gateway mode, the generated hostname is automatically added.
                       Use this to add custom DNS names or IPs for API server access.
+                      When using Gateway mode, the generated hostname is automatically added.
                     items:
                       type: string
                     type: array
                   dataStoreRef:
                     description: |-
-                      DataStoreRef references the Kamaji DataStore to use.
-                      If not specified, the default DataStore is used.
+                      DataStoreRef references the Kamaji DataStore for etcd storage.
+                      If not specified, the platform default DataStore is used.
+                      DataStores can be shared across tenants or dedicated per-tenant.
                     properties:
                       name:
                         description: Name is the name of the resource.
@@ -224,8 +297,14 @@ spec:
                     type: object
                   exposureMode:
                     description: |-
-                      ExposureMode defines how the control plane is exposed to clients.
+                      ExposureMode defines how the control plane API server is exposed to clients.
+                      This determines how kubectl and other tools connect to the cluster.
                       If not specified, inherits from ButlerConfig.spec.controlPlane.defaultExposureMode.
+
+                      Options:
+                      - Gateway: SNI-based routing via Gateway API (most IP-efficient, recommended)
+                      - LoadBalancer: Dedicated LoadBalancer IP per cluster (simple but IP-intensive)
+                      - NodePort: NodePort service (for edge/restricted environments)
                     enum:
                     - Gateway
                     - LoadBalancer
@@ -234,26 +313,31 @@ spec:
                   externalCloudProvider:
                     default: true
                     description: |-
-                      ExternalCloudProvider enables --cloud-provider=external on apiserver and controller-manager.
-                      Required for Harvester, vSphere, and other infrastructure providers.
+                      ExternalCloudProvider enables --cloud-provider=external on apiserver and
+                      controller-manager. Required for cloud provider integrations like Harvester
+                      CCM, vSphere CPI, etc. that manage LoadBalancers and node metadata.
                     type: boolean
                   gateway:
                     description: |-
-                      Gateway contains Gateway-specific configuration.
+                      Gateway contains Gateway-specific configuration for control plane exposure.
                       Only used when ExposureMode is Gateway.
                     properties:
                       hostname:
                         description: |-
-                          Hostname overrides the auto-generated hostname.
-                          If not specified, hostname is generated as {cluster-name}.{domain}
-                          where domain comes from ButlerConfig.spec.controlPlane.gateway.domain.
+                          Hostname overrides the auto-generated hostname for this cluster's API server.
+                          If not specified, hostname is generated as {cluster-name}.{gateway-domain}
+                          where gateway-domain comes from ButlerConfig.spec.controlPlane.gateway.domain.
+
+                          Example: Setting this to "prod-api.k8s.example.com" instead of auto-generated
+                          "my-cluster.k8s.example.com"
                         type: string
                     type: object
                   replicas:
                     default: 1
                     description: |-
-                      Replicas is the number of API server replicas.
-                      Kamaji manages high availability automatically.
+                      Replicas is the number of API server replicas for high availability.
+                      Kamaji manages leader election and etcd clustering automatically.
+                      Use 1 for development, 3 for production HA.
                     format: int32
                     maximum: 3
                     minimum: 1
@@ -262,7 +346,7 @@ spec:
                     description: |-
                       ServiceType for the control plane endpoint.
                       DEPRECATED: Use ExposureMode instead. This field is maintained for backward
-                      compatibility and will be removed in a future version.
+                      compatibility and will be removed in v1beta1.
                     enum:
                     - LoadBalancer
                     - NodePort
@@ -271,88 +355,111 @@ spec:
                 type: object
               infrastructureOverride:
                 description: |-
-                  InfrastructureOverride allows overriding provider-specific settings.
-                  These take precedence over ProviderConfig defaults.
+                  InfrastructureOverride allows overriding provider-specific settings for this cluster.
+                  These take precedence over ProviderConfig defaults, useful for cluster-specific
+                  requirements like dedicated networks or storage.
                 properties:
                   harvester:
                     description: Harvester contains Harvester-specific overrides.
                     properties:
                       imageName:
-                        description: 'ImageName is the VM image to use (format: namespace/name).'
+                        description: |-
+                          ImageName is the VM image to use for workers.
+                          Format: namespace/name (e.g., "default/rocky-9.5-cloud").
                         type: string
                       namespace:
-                        description: Namespace is the Harvester namespace for VMs.
+                        description: Namespace is the Harvester namespace where VMs
+                          will be created.
                         type: string
                       networkName:
-                        description: 'NetworkName is the Harvester network to use
-                          (format: namespace/name).'
+                        description: |-
+                          NetworkName is the Harvester VM network to attach workers to.
+                          Format: namespace/name (e.g., "default/vlan-100").
                         type: string
                     type: object
                   nutanix:
                     description: Nutanix contains Nutanix-specific overrides.
                     properties:
                       clusterUUID:
-                        description: ClusterUUID is the Nutanix cluster UUID.
+                        description: ClusterUUID is the Nutanix cluster UUID to deploy
+                          VMs on.
                         type: string
                       imageUUID:
-                        description: ImageUUID is the Nutanix image UUID.
+                        description: ImageUUID is the Nutanix image UUID for the worker
+                          VM template.
                         type: string
                       storageContainerUUID:
                         description: StorageContainerUUID is the Nutanix storage container
-                          UUID.
+                          for VM disks.
                         type: string
                       subnetUUID:
-                        description: SubnetUUID is the Nutanix subnet UUID.
+                        description: SubnetUUID is the Nutanix subnet UUID for VM
+                          networking.
                         type: string
                     type: object
                   proxmox:
                     description: Proxmox contains Proxmox-specific overrides.
                     properties:
                       node:
-                        description: Node is the Proxmox node to deploy VMs on.
+                        description: Node is the Proxmox node name to deploy VMs on.
                         type: string
                       storage:
-                        description: Storage is the Proxmox storage to use.
+                        description: Storage is the Proxmox storage identifier for
+                          VM disks.
                         type: string
                       templateID:
-                        description: TemplateID is the VM template ID to clone.
-                        format: int32
+                        description: TemplateID is the Proxmox VM template ID to clone
+                          from.
                         type: integer
                     type: object
                 type: object
               kubernetesVersion:
-                description: KubernetesVersion is the target Kubernetes version.
+                description: |-
+                  KubernetesVersion is the target Kubernetes version for this cluster.
+                  Must be a supported version (check ButlerConfig for allowed versions).
+                  Format: vX.Y.Z (e.g., v1.31.4)
                 pattern: ^v\d+\.\d+\.\d+$
                 type: string
               managementPolicy:
-                description: ManagementPolicy defines how Butler manages this cluster.
+                description: |-
+                  ManagementPolicy defines how Butler manages this cluster after creation.
+                  Controls addon lifecycle management and upgrade behavior.
                 properties:
                   autoUpgrade:
                     default: false
-                    description: AutoUpgrade enables automatic Kubernetes version
-                      upgrades.
+                    description: |-
+                      AutoUpgrade enables automatic Kubernetes version upgrades.
+                      When enabled, Butler upgrades clusters to newer patch versions automatically
+                      during maintenance windows. Minor version upgrades require manual approval.
                     type: boolean
                   maintenanceWindow:
-                    description: MaintenanceWindow defines when upgrades and maintenance
-                      can occur.
+                    description: |-
+                      MaintenanceWindow defines when automatic upgrades and maintenance can occur.
+                      If not specified, maintenance can occur at any time (not recommended for production).
                     properties:
                       daysOfWeek:
-                        description: DaysOfWeek specifies which days maintenance is
-                          allowed.
+                        description: |-
+                          DaysOfWeek specifies which days maintenance is allowed.
+                          Values: "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
                         items:
                           type: string
                         type: array
                       duration:
-                        description: Duration is how long the maintenance window lasts.
+                        description: |-
+                          Duration is how long the maintenance window lasts.
+                          Format: Go duration string (e.g., "4h", "2h30m").
                         type: string
                       startTime:
-                        description: StartTime is the start time in HH:MM format (24-hour,
-                          UTC).
+                        description: |-
+                          StartTime is the start of the maintenance window in HH:MM format (24-hour, UTC).
+                          Example: "02:00" for 2 AM UTC.
                         type: string
                     type: object
                   mode:
                     default: Active
-                    description: Mode determines how Butler manages addons.
+                    description: |-
+                      Mode determines how Butler manages addons after initial installation.
+                      See ManagementMode constants for detailed behavior descriptions.
                     enum:
                     - Active
                     - Observe
@@ -360,27 +467,47 @@ spec:
                     type: string
                 type: object
               networking:
-                description: Networking configures cluster networking.
+                description: |-
+                  Networking configures cluster networking including pod/service CIDRs
+                  and LoadBalancer IP pools for tenant services.
                 properties:
-                  dnsServiceIP:
-                    default: 10.96.0.10
+                  loadBalancerPool:
                     description: |-
-                      DNSServiceIP is the IP for the DNS service.
-                      Must be within the ServiceCIDR range.
-                    type: string
+                      LoadBalancerPool defines the IP pool for LoadBalancer services in the tenant cluster.
+                      These IPs are announced via MetalLB for services of type LoadBalancer.
+
+                      DEPRECATED: Use Addons.LoadBalancer.AddressPool instead.
+                      If both are specified, Addons.LoadBalancer.AddressPool takes precedence.
+                      This field is maintained for backward compatibility and will be removed in v1beta1.
+                    properties:
+                      end:
+                        description: End is the last IP address in the pool (inclusive).
+                        type: string
+                      start:
+                        description: Start is the first IP address in the pool (inclusive).
+                        type: string
+                    required:
+                    - end
+                    - start
+                    type: object
                   podCIDR:
                     default: 10.244.0.0/16
-                    description: PodCIDR is the CIDR for pod IPs.
+                    description: |-
+                      PodCIDR is the CIDR block for pod IP addresses.
+                      Must not overlap with ServiceCIDR or infrastructure networks.
                     type: string
                   serviceCIDR:
-                    default: 10.96.0.0/16
-                    description: ServiceCIDR is the CIDR for service IPs.
+                    default: 10.96.0.0/12
+                    description: |-
+                      ServiceCIDR is the CIDR block for Kubernetes service IPs.
+                      Must not overlap with PodCIDR or infrastructure networks.
                     type: string
                 type: object
               providerConfigRef:
                 description: |-
-                  ProviderConfigRef references the ProviderConfig for infrastructure.
-                  If not specified, defaults are used (Team's or platform's).
+                  ProviderConfigRef references the ProviderConfig for infrastructure provisioning.
+                  If not specified, the Team's default or platform default ProviderConfig is used.
+                  This determines which infrastructure (Harvester, Nutanix, etc.) hosts the workers.
                 properties:
                   name:
                     description: Name is the name of the resource.
@@ -392,7 +519,8 @@ spec:
               teamRef:
                 description: |-
                   TeamRef references the Team this cluster belongs to.
-                  Required when multi-tenancy mode is Enforced.
+                  Required when ButlerConfig.spec.multiTenancy.mode is Enforced.
+                  The Team determines namespace placement, resource quotas, and RBAC.
                 properties:
                   name:
                     description: Name is the name of the resource.
@@ -402,15 +530,19 @@ spec:
                 - name
                 type: object
               workers:
-                description: Workers configures the worker nodes.
+                description: |-
+                  Workers configures the worker nodes that run tenant workloads.
+                  Workers are provisioned as VMs on the infrastructure provider.
                 properties:
                   machineTemplate:
-                    description: MachineTemplate defines the VM specification for
-                      workers.
+                    description: |-
+                      MachineTemplate defines the VM specification for worker nodes.
+                      All workers in the cluster use the same specification.
                     properties:
                       cpu:
                         default: 4
-                        description: CPU is the number of CPU cores.
+                        description: CPU is the number of CPU cores allocated to each
+                          worker VM.
                         format: int32
                         minimum: 1
                         type: integer
@@ -419,7 +551,10 @@ spec:
                         - type: integer
                         - type: string
                         default: 100Gi
-                        description: DiskSize is the root disk size.
+                        description: |-
+                          DiskSize is the root disk size for each worker VM.
+                          This should be large enough for the OS, container images, and ephemeral storage.
+                          Accepts Kubernetes quantity format (e.g., "100Gi", "200G").
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       memory:
@@ -427,32 +562,38 @@ spec:
                         - type: integer
                         - type: string
                         default: 16Gi
-                        description: Memory is the amount of RAM.
+                        description: |-
+                          Memory is the amount of RAM allocated to each worker VM.
+                          Accepts Kubernetes quantity format (e.g., "16Gi", "32G").
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       os:
-                        description: OS configures the operating system.
+                        description: OS configures the operating system for worker
+                          nodes.
                         properties:
                           imageRef:
                             description: |-
-                              ImageRef references a specific image to use.
-                              Overrides Type and Version if specified.
+                              ImageRef references a specific VM image to use, overriding Type and Version.
+                              Format is provider-specific (e.g., "default/rocky-9.5-cloud" for Harvester).
                             type: string
                           type:
                             default: rocky
-                            description: Type is the OS type.
+                            description: Type is the OS distribution to use.
                             enum:
                             - rocky
                             - flatcar
                             type: string
                           version:
                             default: "9.5"
-                            description: Version is the OS version.
+                            description: Version is the OS version (e.g., "9.5" for
+                              Rocky Linux 9.5).
                             type: string
                         type: object
                     type: object
                   replicas:
-                    description: Replicas is the desired number of worker nodes.
+                    description: |-
+                      Replicas is the desired number of worker nodes.
+                      Butler uses CAPI MachineDeployments to manage worker lifecycle.
                     format: int32
                     minimum: 1
                     type: integer
@@ -467,7 +608,9 @@ spec:
             description: TenantClusterStatus defines the observed state of TenantCluster.
             properties:
               conditions:
-                description: Conditions represent the latest available observations.
+                description: |-
+                  Conditions represent the latest available observations of the cluster's state.
+                  Standard conditions: Ready, InfrastructureReady, ControlPlaneReady, WorkersReady, AddonsReady
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -527,18 +670,21 @@ spec:
                 - type
                 x-kubernetes-list-type: map
               controlPlane:
-                description: ControlPlane contains control plane exposure status.
+                description: |-
+                  ControlPlane contains detailed control plane exposure status.
+                  Includes endpoint, exposure mode, and mode-specific details.
                 properties:
                   endpoint:
                     description: |-
-                      Endpoint is the control plane endpoint URL.
+                      Endpoint is the control plane endpoint URL for kubectl/API access.
                       Format depends on exposure mode:
-                      - Gateway: https://{hostname}:443
+                      - Gateway: https://{hostname}:6443
                       - LoadBalancer: https://{ip}:6443
                       - NodePort: https://{node-ip}:{port}
                     type: string
                   exposureMode:
-                    description: ExposureMode is the active exposure mode.
+                    description: ExposureMode is the active exposure mode for this
+                      control plane.
                     enum:
                     - Gateway
                     - LoadBalancer
@@ -546,31 +692,37 @@ spec:
                     type: string
                   gatewayReady:
                     description: |-
-                      GatewayReady indicates the Gateway TLSRoute is ready (Gateway mode only).
-                      This is set by observing the Kamaji TenantControlPlane gateway status.
+                      GatewayReady indicates the Gateway TLSRoute is configured and ready (Gateway mode only).
+                      When true, traffic can flow from the Gateway to this control plane.
                     type: boolean
                   hostname:
-                    description: Hostname is the DNS hostname (Gateway mode only).
+                    description: |-
+                      Hostname is the DNS hostname for API server access (Gateway mode only).
+                      Clients connect using this hostname, which routes through the Gateway.
                     type: string
                   loadBalancerIP:
-                    description: LoadBalancerIP is the allocated IP (LoadBalancer
-                      mode only).
+                    description: |-
+                      LoadBalancerIP is the allocated external IP (LoadBalancer mode only).
+                      This IP is assigned by MetalLB or the cloud provider's load balancer.
                     type: string
                   message:
-                    description: Message provides additional status information.
+                    description: Message provides additional status information or
+                      error details.
                     type: string
                   ready:
-                    description: Ready indicates the control plane endpoint is accessible.
+                    description: Ready indicates the control plane endpoint is accessible
+                      and healthy.
                     type: boolean
                 type: object
               controlPlaneEndpoint:
                 description: |-
-                  ControlPlaneEndpoint is the API server endpoint.
-                  DEPRECATED: Use ControlPlane.Endpoint instead.
+                  ControlPlaneEndpoint is the API server endpoint URL.
+                  DEPRECATED: Use ControlPlane.Endpoint instead for detailed exposure information.
                 type: string
               kubeconfigSecretRef:
-                description: KubeconfigSecretRef references the Secret containing
-                  the kubeconfig.
+                description: |-
+                  KubeconfigSecretRef references the Secret containing the admin kubeconfig.
+                  Use this kubeconfig to access the tenant cluster as cluster-admin.
                 properties:
                   name:
                     description: Name is the name of the resource.
@@ -580,23 +732,28 @@ spec:
                 - name
                 type: object
               lastTransitionTime:
-                description: LastTransitionTime is when the phase last changed.
+                description: LastTransitionTime is when the Phase last changed.
                 format: date-time
                 type: string
               observedGeneration:
-                description: ObservedGeneration is the last observed generation.
+                description: |-
+                  ObservedGeneration is the spec generation that was last reconciled.
+                  Used to detect when the spec has changed and reconciliation is needed.
                 format: int64
                 type: integer
               observedState:
-                description: ObservedState is the observed state of the cluster.
+                description: |-
+                  ObservedState captures the current observed state of the cluster.
+                  Useful for comparing desired vs actual state.
                 properties:
                   addons:
-                    description: Addons shows installed addon status.
+                    description: Addons shows the status of installed addons.
                     items:
                       description: AddonStatus shows the status of an installed addon.
                       properties:
                         managedBy:
-                          description: ManagedBy indicates who manages this addon.
+                          description: ManagedBy indicates who manages this addon's
+                            lifecycle.
                           enum:
                           - butler
                           - flux
@@ -604,7 +761,8 @@ spec:
                           - manual
                           type: string
                         name:
-                          description: Name is the addon name.
+                          description: Name is the addon name (e.g., "cilium", "metallb",
+                            "longhorn").
                           type: string
                         status:
                           description: Status is the addon health status.
@@ -616,7 +774,7 @@ spec:
                           - Failed
                           type: string
                         version:
-                          description: Version is the installed version.
+                          description: Version is the installed addon version.
                           type: string
                       required:
                       - managedBy
@@ -626,23 +784,26 @@ spec:
                       type: object
                     type: array
                   kubernetesVersion:
-                    description: KubernetesVersion is the actual Kubernetes version
-                      running.
+                    description: |-
+                      KubernetesVersion is the actual Kubernetes version running on the cluster.
+                      May differ from spec during upgrades.
                     type: string
                   workers:
-                    description: Workers shows worker node status.
+                    description: Workers shows the current state of worker nodes.
                     properties:
                       desired:
-                        description: Desired is the desired number of workers.
+                        description: Desired is the desired number of workers from
+                          spec.
                         format: int32
                         type: integer
                       nodes:
-                        description: Nodes lists the worker nodes.
+                        description: Nodes lists the names of worker nodes in the
+                          cluster.
                         items:
                           type: string
                         type: array
                       ready:
-                        description: Ready is the number of ready workers.
+                        description: Ready is the number of workers in Ready state.
                         format: int32
                         type: integer
                     required:
@@ -651,7 +812,7 @@ spec:
                     type: object
                 type: object
               phase:
-                description: Phase represents the current phase of the cluster.
+                description: Phase represents the current lifecycle phase of the cluster.
                 enum:
                 - Pending
                 - Provisioning
@@ -662,15 +823,18 @@ spec:
                 - Failed
                 type: string
               tenantNamespace:
-                description: TenantNamespace is the namespace containing CAPI/Kamaji
-                  resources.
+                description: |-
+                  TenantNamespace is the namespace containing CAPI and Kamaji resources for this cluster.
+                  Format: tc-{cluster-name} or team-{team-name} depending on multi-tenancy mode.
                 type: string
               workerNodesDesired:
                 description: WorkerNodesDesired is the desired count of worker nodes
+                  from spec.
                 format: int32
                 type: integer
               workerNodesReady:
-                description: WorkerNodesReady is the count of ready worker nodes
+                description: WorkerNodesReady is the count of worker nodes in Ready
+                  state.
                 format: int32
                 type: integer
             type: object

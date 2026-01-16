@@ -21,27 +21,45 @@ import (
 )
 
 // ControlPlaneExposureMode defines how the control plane is exposed to clients.
+// This determines the network path for kubectl and other API clients to reach
+// the tenant cluster's Kubernetes API server.
 // +kubebuilder:validation:Enum=Gateway;LoadBalancer;NodePort
 type ControlPlaneExposureMode string
 
 const (
 	// ControlPlaneExposureModeGateway exposes the control plane via Gateway API
 	// with SNI-based TLS routing. Multiple tenant control planes share a single
-	// Gateway IP, differentiated by hostname. Most IP-efficient option.
-	// Requires: Gateway API CRDs, Gateway controller (e.g., Cilium), DNS configuration.
+	// Gateway IP, differentiated by hostname (e.g., tenant-a.k8s.example.com).
+	//
+	// This is the most IP-efficient option, recommended for environments with
+	// limited IP addresses or many tenant clusters.
+	//
+	// Requirements:
+	// - Gateway API CRDs installed
+	// - Gateway controller (e.g., Cilium Gateway API)
+	// - DNS wildcard record pointing to Gateway IP
+	// - ButlerConfig.spec.controlPlane.gateway configured
 	ControlPlaneExposureModeGateway ControlPlaneExposureMode = "Gateway"
 
-	// ControlPlaneExposureModeLoadBalancer exposes the control plane via a dedicated
-	// LoadBalancer Service. Each tenant gets its own IP address. Simple but
-	// consumes one IP per tenant cluster.
+	// ControlPlaneExposureModeLoadBalancer exposes the control plane via a
+	// dedicated LoadBalancer Service. Each tenant cluster gets its own external
+	// IP address assigned by MetalLB or a cloud provider.
+	//
+	// This is the simplest option but consumes one IP per tenant cluster.
+	// Good for environments with ample IP addresses or few clusters.
 	ControlPlaneExposureModeLoadBalancer ControlPlaneExposureMode = "LoadBalancer"
 
-	// ControlPlaneExposureModeNodePort exposes the control plane via NodePort Service.
-	// Useful for edge deployments or environments without LoadBalancer support.
+	// ControlPlaneExposureModeNodePort exposes the control plane via a NodePort
+	// Service. Clients connect to any management cluster node IP on the
+	// allocated NodePort.
+	//
+	// Useful for edge deployments, air-gapped environments, or when LoadBalancer
+	// and Gateway options are unavailable.
 	ControlPlaneExposureModeNodePort ControlPlaneExposureMode = "NodePort"
 )
 
 // ProviderReference references a ProviderConfig resource.
+// Used when the provider may be in a different namespace.
 type ProviderReference struct {
 	// Name is the name of the ProviderConfig resource.
 	// +kubebuilder:validation:Required
@@ -73,6 +91,7 @@ type SecretReference struct {
 }
 
 // LocalObjectReference references a resource in the same namespace.
+// This is the most common reference type within Butler.
 type LocalObjectReference struct {
 	// Name is the name of the resource.
 	// +kubebuilder:validation:Required
@@ -94,12 +113,8 @@ type NamespacedObjectReference struct {
 }
 
 // TeamResourceLimits defines resource quotas and restrictions for a Team.
-// This is separate from ResourceLimits in butlerconfig_types.go which defines
-// platform-wide defaults. TeamResourceLimits includes additional fields for
-// feature restrictions that are team-specific.
+// This allows platform administrators to control resource consumption per team.
 type TeamResourceLimits struct {
-	// ====== Cluster Limits ======
-
 	// MaxClusters is the maximum number of TenantClusters this team can create.
 	// +optional
 	// +kubebuilder:validation:Minimum=0
@@ -115,8 +130,6 @@ type TeamResourceLimits struct {
 	// +kubebuilder:validation:Minimum=0
 	MaxTotalNodes *int32 `json:"maxTotalNodes,omitempty"`
 
-	// ====== Compute Limits ======
-
 	// MaxCPUCores is the maximum total CPU cores across all clusters.
 	// +optional
 	MaxCPUCores *resource.Quantity `json:"maxCPUCores,omitempty"`
@@ -128,8 +141,6 @@ type TeamResourceLimits struct {
 	// MaxStorage is the maximum total storage across all clusters.
 	// +optional
 	MaxStorage *resource.Quantity `json:"maxStorage,omitempty"`
-
-	// ====== Per-Cluster Defaults ======
 
 	// DefaultNodeCount is the default worker count for new clusters.
 	// +optional
@@ -144,8 +155,6 @@ type TeamResourceLimits struct {
 	// DefaultMemoryPerNode is the default memory per worker node.
 	// +optional
 	DefaultMemoryPerNode *resource.Quantity `json:"defaultMemoryPerNode,omitempty"`
-
-	// ====== Feature Restrictions ======
 
 	// AllowedKubernetesVersions restricts which K8s versions can be used.
 	// If empty, all supported versions are allowed.
@@ -169,6 +178,7 @@ type TeamResourceLimits struct {
 }
 
 // TeamResourceUsage shows current resource consumption for a Team.
+// Used for monitoring and quota enforcement.
 type TeamResourceUsage struct {
 	// Clusters is the number of TenantClusters.
 	// +optional
@@ -190,34 +200,32 @@ type TeamResourceUsage struct {
 	// +optional
 	TotalStorage *resource.Quantity `json:"totalStorage,omitempty"`
 
-	// ====== Utilization Percentages ======
-
-	// ClusterUtilization is percentage of MaxClusters used.
+	// ClusterUtilization is percentage of MaxClusters used (0-100).
 	// +optional
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
 	ClusterUtilization *int32 `json:"clusterUtilization,omitempty"`
 
-	// NodeUtilization is percentage of MaxTotalNodes used.
+	// NodeUtilization is percentage of MaxTotalNodes used (0-100).
 	// +optional
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
 	NodeUtilization *int32 `json:"nodeUtilization,omitempty"`
 
-	// CPUUtilization is percentage of MaxCPUCores used.
+	// CPUUtilization is percentage of MaxCPUCores used (0-100).
 	// +optional
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
 	CPUUtilization *int32 `json:"cpuUtilization,omitempty"`
 
-	// MemoryUtilization is percentage of MaxMemory used.
+	// MemoryUtilization is percentage of MaxMemory used (0-100).
 	// +optional
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
 	MemoryUtilization *int32 `json:"memoryUtilization,omitempty"`
 }
 
-// Kubernetes recommended labels.
+// Kubernetes recommended labels for resource organization.
 // See: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 const (
 	// LabelManagedBy indicates the tool managing the resource.
@@ -231,7 +239,7 @@ const (
 	// LabelTeam identifies the team that owns a resource.
 	LabelTeam = "butler.butlerlabs.dev/team"
 
-	// LabelTenant identifies the tenant cluster.
+	// LabelTenant identifies the tenant cluster a resource belongs to.
 	LabelTenant = "butler.butlerlabs.dev/tenant"
 
 	// LabelSourceNamespace indicates the source namespace for generated resources.
@@ -246,27 +254,27 @@ const (
 	// AnnotationDescription provides a human-readable description.
 	AnnotationDescription = "butler.butlerlabs.dev/description"
 
-	// AnnotationCreatedBy indicates who created the resource.
+	// AnnotationCreatedBy indicates who created the resource (user, system, etc.).
 	AnnotationCreatedBy = "butler.butlerlabs.dev/created-by"
 )
 
-// Finalizers.
+// Finalizers used by Butler controllers for cleanup.
 const (
-	// FinalizerTeam is the finalizer for Team resources.
+	// FinalizerTeam ensures Team cleanup before deletion.
 	FinalizerTeam = "butler.butlerlabs.dev/team"
 
-	// FinalizerTenantCluster is the finalizer for TenantCluster resources.
+	// FinalizerTenantCluster ensures TenantCluster cleanup before deletion.
 	FinalizerTenantCluster = "butler.butlerlabs.dev/tenantcluster"
 
-	// FinalizerTenantAddon is the finalizer for TenantAddon resources.
+	// FinalizerTenantAddon ensures TenantAddon cleanup before deletion.
 	FinalizerTenantAddon = "butler.butlerlabs.dev/tenantaddon"
 
-	// FinalizerUser is the finalizer for User resources.
+	// FinalizerUser ensures User cleanup before deletion.
 	FinalizerUser = "butler.butlerlabs.dev/user"
 )
 
 // Condition types following Kubernetes API conventions.
-// See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+// See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md
 const (
 	// ConditionTypeReady indicates the resource is ready for use.
 	ConditionTypeReady = "Ready"
@@ -278,7 +286,7 @@ const (
 	ConditionTypeDegraded = "Degraded"
 )
 
-// Condition reasons for MachineRequest.
+// Condition reasons used across Butler resources.
 const (
 	// ReasonPending indicates the request is waiting to be processed.
 	ReasonPending = "Pending"
@@ -316,7 +324,7 @@ const (
 	// ReasonWaitingForDependencies indicates waiting for dependencies.
 	ReasonWaitingForDependencies = "WaitingForDependencies"
 
-	// ReasonReconciling indicates active reconciliation.
+	// ReasonReconciling indicates active reconciliation in progress.
 	ReasonReconciling = "Reconciling"
 
 	// ReasonValidationFailed indicates validation failed.
@@ -325,6 +333,6 @@ const (
 	// ReasonQuotaExceeded indicates a resource quota was exceeded.
 	ReasonQuotaExceeded = "QuotaExceeded"
 
-	// ReasonGatewayNotConfigured indicates Gateway mode requested but not configured.
+	// ReasonGatewayNotConfigured indicates Gateway mode was requested but Gateway is not configured.
 	ReasonGatewayNotConfigured = "GatewayNotConfigured"
 )

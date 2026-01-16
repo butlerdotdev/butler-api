@@ -62,7 +62,9 @@ spec:
           metadata:
             type: object
           spec:
-            description: ButlerConfigSpec defines the desired state of ButlerConfig.
+            description: |-
+              ButlerConfigSpec defines the desired state of ButlerConfig.
+              ButlerConfig is a singleton that configures platform-wide settings.
             properties:
               controlPlane:
                 description: ControlPlane configures platform-wide control plane exposure
@@ -74,6 +76,11 @@ spec:
                       DefaultExposureMode is the default exposure mode for new TenantClusters.
                       TenantClusters can override this in their spec.
                       If not specified, defaults to LoadBalancer for backward compatibility.
+
+                      Options:
+                      - Gateway: SNI-based routing via Gateway API (most IP-efficient)
+                      - LoadBalancer: Dedicated LoadBalancer IP per cluster
+                      - NodePort: NodePort service per cluster
                     enum:
                     - Gateway
                     - LoadBalancer
@@ -81,81 +88,83 @@ spec:
                     type: string
                   gateway:
                     description: |-
-                      Gateway configures Gateway API exposure settings.
+                      Gateway configures Gateway API exposure settings for control planes.
                       Required when DefaultExposureMode is Gateway or any TenantCluster uses Gateway mode.
+                      Butler creates and manages the Gateway resource.
                     properties:
                       annotations:
                         additionalProperties:
                           type: string
                         description: |-
                           Annotations are additional annotations to apply to the Gateway resource.
-                          Use this for Gateway controller-specific configuration.
+                          Use for Gateway controller-specific configuration (e.g., load balancer settings).
                         type: object
                       domain:
                         description: |-
                           Domain is the base domain for control plane hostnames.
-                          TenantClusters will be exposed as {cluster-name}.{domain}.
-                          Example: "k8s.example.com" results in hostnames like "tenant-1.k8s.example.com"
-                          DNS must be configured with a wildcard record pointing to the Gateway address.
+                          TenantClusters are exposed as {cluster-name}.{domain}.
+                          Example: "k8s.example.com" results in hostnames like "tenant-a.k8s.example.com"
+
+                          DNS must be configured with a wildcard record pointing to the Gateway address:
+                            *.k8s.example.com -> <Gateway IP>
+
                           Required when using Gateway exposure mode.
                         minLength: 1
                         type: string
                       gatewayClassName:
                         default: cilium
                         description: |-
-                          GatewayClassName is the GatewayClass to use for the Gateway.
+                          GatewayClassName is the GatewayClass to use for the managed Gateway.
                           Must reference an existing GatewayClass in the cluster.
-                          Common values: "cilium", "istio", "envoy-gateway"
+                          Common values: "cilium" (recommended), "istio", "envoy-gateway"
                         type: string
                       gatewayName:
                         default: butler-control-plane
                         description: |-
                           GatewayName is the name of the Gateway resource Butler manages.
-                          Butler creates and owns this Gateway resource.
+                          Butler creates this Gateway and maintains ownership of it.
                         type: string
                       gatewayNamespace:
                         default: butler-system
-                        description: GatewayNamespace is the namespace for the Gateway
-                          resource.
+                        description: |-
+                          GatewayNamespace is the namespace where the Gateway resource is created.
+                          Should be a namespace where the Gateway controller has permissions.
                         type: string
                     required:
                     - domain
                     type: object
                 type: object
               defaultAddonVersions:
-                description: |-
-                  DefaultAddonVersions specifies the default versions for addons.
-                  Used when TenantCluster doesn't specify versions.
+                description: DefaultAddonVersions specifies default versions for platform
+                  addons.
                 properties:
                   certManager:
-                    description: CertManager version.
+                    description: CertManager is the default cert-manager version.
                     type: string
                   cilium:
-                    description: Cilium version.
+                    description: Cilium is the default Cilium CNI version.
                     type: string
                   fluxcd:
-                    description: FluxCD version.
+                    description: FluxCD is the default Flux CD version for GitOps.
                     type: string
                   longhorn:
-                    description: Longhorn version.
+                    description: Longhorn is the default Longhorn storage version.
                     type: string
                   metallb:
-                    description: MetalLB version.
+                    description: MetalLB is the default MetalLB load balancer version.
                     type: string
                   traefik:
-                    description: Traefik version.
+                    description: Traefik is the default Traefik ingress controller
+                      version.
                     type: string
                 type: object
               defaultNamespace:
                 default: butler-tenants
-                description: |-
-                  DefaultNamespace is the namespace for TenantClusters when not using Teams.
-                  Used in Disabled and Optional modes.
+                description: DefaultNamespace is the namespace for TenantClusters
+                  when not using Teams.
                 type: string
               defaultProviderConfigRef:
-                description: |-
-                  DefaultProviderConfigRef references the default ProviderConfig.
-                  Used when Teams or TenantClusters don't specify their own.
+                description: DefaultProviderConfigRef references the default ProviderConfig.
                 properties:
                   name:
                     description: Name is the name of the resource.
@@ -165,9 +174,8 @@ spec:
                 - name
                 type: object
               defaultTeamLimits:
-                description: |-
-                  DefaultTeamLimits are the default resource limits for new Teams.
-                  Admins can override these when creating individual Teams.
+                description: DefaultTeamLimits are the default resource limits for
+                  new Teams.
                 properties:
                   maxClusters:
                     description: MaxClusters is the maximum number of TenantClusters
@@ -222,7 +230,7 @@ spec:
             description: ButlerConfigStatus defines the observed state of ButlerConfig.
             properties:
               clusterCount:
-                description: ClusterCount is the current number of TenantClusters.
+                description: ClusterCount is the current number of TenantCluster resources.
                 format: int32
                 type: integer
               conditions:
@@ -288,7 +296,7 @@ spec:
                 x-kubernetes-list-type: map
               gateway:
                 description: |-
-                  Gateway contains the managed Gateway resource status.
+                  Gateway contains the status of the managed Gateway resource.
                   Only populated when Gateway exposure mode is configured.
                 properties:
                   address:
@@ -299,7 +307,7 @@ spec:
                   listenerCount:
                     description: |-
                       ListenerCount is the number of active listeners on the Gateway.
-                      Should be 2 when healthy (API server and Konnectivity).
+                      Should be 2 when healthy (kube-apiserver on 6443, konnectivity on 8132).
                     format: int32
                     type: integer
                   message:
@@ -307,7 +315,8 @@ spec:
                       Gateway status.
                     type: string
                   ready:
-                    description: Ready indicates the Gateway is ready to accept traffic.
+                    description: Ready indicates the Gateway is programmed and ready
+                      to accept traffic.
                     type: boolean
                   tenantCount:
                     description: TenantCount is the number of TenantClusters using
@@ -316,11 +325,12 @@ spec:
                     type: integer
                 type: object
               observedGeneration:
-                description: ObservedGeneration is the last observed generation.
+                description: ObservedGeneration is the spec generation that was last
+                  reconciled.
                 format: int64
                 type: integer
               teamCount:
-                description: TeamCount is the current number of Teams.
+                description: TeamCount is the current number of Team resources.
                 format: int32
                 type: integer
             type: object

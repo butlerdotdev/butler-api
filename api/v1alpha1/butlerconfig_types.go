@@ -21,50 +21,45 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// MultiTenancyMode defines how multi-tenancy is enforced.
+// MultiTenancyMode defines how multi-tenancy is enforced across the platform.
 // +kubebuilder:validation:Enum=Enforced;Optional;Disabled
 type MultiTenancyMode string
 
 const (
 	// MultiTenancyModeEnforced requires all TenantClusters to belong to a Team.
-	// Teams must exist before TenantClusters can be created.
-	// This is the recommended mode for enterprise deployments.
+	// Recommended for enterprise deployments with multiple teams.
 	MultiTenancyModeEnforced MultiTenancyMode = "Enforced"
 
 	// MultiTenancyModeOptional allows Teams but doesn't require them.
-	// TenantClusters can exist in the default namespace without a Team.
+	// Useful during migration or for mixed deployment models.
 	MultiTenancyModeOptional MultiTenancyMode = "Optional"
 
-	// MultiTenancyModeDisabled disables Team functionality.
-	// All TenantClusters exist in the default namespace.
-	// This is the simplest mode for demos and single-user deployments.
+	// MultiTenancyModeDisabled disables Team functionality entirely.
+	// Simplest mode for demos and single-user deployments.
 	MultiTenancyModeDisabled MultiTenancyMode = "Disabled"
 )
 
 // ButlerConfigSpec defines the desired state of ButlerConfig.
+// ButlerConfig is a singleton that configures platform-wide settings.
 type ButlerConfigSpec struct {
 	// MultiTenancy configures how multi-tenancy is handled.
 	// +optional
 	MultiTenancy MultiTenancyConfig `json:"multiTenancy,omitempty"`
 
 	// DefaultNamespace is the namespace for TenantClusters when not using Teams.
-	// Used in Disabled and Optional modes.
 	// +kubebuilder:default="butler-tenants"
 	// +optional
 	DefaultNamespace string `json:"defaultNamespace,omitempty"`
 
 	// DefaultProviderConfigRef references the default ProviderConfig.
-	// Used when Teams or TenantClusters don't specify their own.
 	// +optional
 	DefaultProviderConfigRef *LocalObjectReference `json:"defaultProviderConfigRef,omitempty"`
 
 	// DefaultTeamLimits are the default resource limits for new Teams.
-	// Admins can override these when creating individual Teams.
 	// +optional
 	DefaultTeamLimits *ResourceLimits `json:"defaultTeamLimits,omitempty"`
 
-	// DefaultAddonVersions specifies the default versions for addons.
-	// Used when TenantCluster doesn't specify versions.
+	// DefaultAddonVersions specifies default versions for platform addons.
 	// +optional
 	DefaultAddonVersions *AddonVersions `json:"defaultAddonVersions,omitempty"`
 
@@ -108,27 +103,27 @@ type ResourceLimits struct {
 
 // AddonVersions specifies default versions for Butler-managed addons.
 type AddonVersions struct {
-	// Cilium version.
+	// Cilium is the default Cilium CNI version.
 	// +optional
 	Cilium string `json:"cilium,omitempty"`
 
-	// MetalLB version.
+	// MetalLB is the default MetalLB load balancer version.
 	// +optional
 	MetalLB string `json:"metallb,omitempty"`
 
-	// CertManager version.
+	// CertManager is the default cert-manager version.
 	// +optional
 	CertManager string `json:"certManager,omitempty"`
 
-	// Longhorn version.
+	// Longhorn is the default Longhorn storage version.
 	// +optional
 	Longhorn string `json:"longhorn,omitempty"`
 
-	// Traefik version.
+	// Traefik is the default Traefik ingress controller version.
 	// +optional
 	Traefik string `json:"traefik,omitempty"`
 
-	// FluxCD version.
+	// FluxCD is the default Flux CD version for GitOps.
 	// +optional
 	FluxCD string `json:"fluxcd,omitempty"`
 }
@@ -138,48 +133,59 @@ type PlatformControlPlaneConfig struct {
 	// DefaultExposureMode is the default exposure mode for new TenantClusters.
 	// TenantClusters can override this in their spec.
 	// If not specified, defaults to LoadBalancer for backward compatibility.
+	//
+	// Options:
+	// - Gateway: SNI-based routing via Gateway API (most IP-efficient)
+	// - LoadBalancer: Dedicated LoadBalancer IP per cluster
+	// - NodePort: NodePort service per cluster
 	// +kubebuilder:default="LoadBalancer"
 	// +optional
 	DefaultExposureMode ControlPlaneExposureMode `json:"defaultExposureMode,omitempty"`
 
-	// Gateway configures Gateway API exposure settings.
+	// Gateway configures Gateway API exposure settings for control planes.
 	// Required when DefaultExposureMode is Gateway or any TenantCluster uses Gateway mode.
+	// Butler creates and manages the Gateway resource.
 	// +optional
 	Gateway *GatewayConfig `json:"gateway,omitempty"`
 }
 
 // GatewayConfig defines Gateway API configuration for control plane exposure.
 // When configured, Butler manages a Gateway resource that routes traffic to
-// tenant control planes based on SNI hostname.
+// tenant control planes based on SNI (Server Name Indication) hostname.
+// This allows multiple tenant API servers to share a single external IP.
 type GatewayConfig struct {
 	// Domain is the base domain for control plane hostnames.
-	// TenantClusters will be exposed as {cluster-name}.{domain}.
-	// Example: "k8s.example.com" results in hostnames like "tenant-1.k8s.example.com"
-	// DNS must be configured with a wildcard record pointing to the Gateway address.
+	// TenantClusters are exposed as {cluster-name}.{domain}.
+	// Example: "k8s.example.com" results in hostnames like "tenant-a.k8s.example.com"
+	//
+	// DNS must be configured with a wildcard record pointing to the Gateway address:
+	//   *.k8s.example.com -> <Gateway IP>
+	//
 	// Required when using Gateway exposure mode.
 	// +kubebuilder:validation:MinLength=1
 	Domain string `json:"domain"`
 
 	// GatewayName is the name of the Gateway resource Butler manages.
-	// Butler creates and owns this Gateway resource.
+	// Butler creates this Gateway and maintains ownership of it.
 	// +kubebuilder:default="butler-control-plane"
 	// +optional
 	GatewayName string `json:"gatewayName,omitempty"`
 
-	// GatewayNamespace is the namespace for the Gateway resource.
+	// GatewayNamespace is the namespace where the Gateway resource is created.
+	// Should be a namespace where the Gateway controller has permissions.
 	// +kubebuilder:default="butler-system"
 	// +optional
 	GatewayNamespace string `json:"gatewayNamespace,omitempty"`
 
-	// GatewayClassName is the GatewayClass to use for the Gateway.
+	// GatewayClassName is the GatewayClass to use for the managed Gateway.
 	// Must reference an existing GatewayClass in the cluster.
-	// Common values: "cilium", "istio", "envoy-gateway"
+	// Common values: "cilium" (recommended), "istio", "envoy-gateway"
 	// +kubebuilder:default="cilium"
 	// +optional
 	GatewayClassName string `json:"gatewayClassName,omitempty"`
 
 	// Annotations are additional annotations to apply to the Gateway resource.
-	// Use this for Gateway controller-specific configuration.
+	// Use for Gateway controller-specific configuration (e.g., load balancer settings).
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 }
@@ -192,27 +198,27 @@ type ButlerConfigStatus struct {
 	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
-	// ObservedGeneration is the last observed generation.
+	// ObservedGeneration is the spec generation that was last reconciled.
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
-	// TeamCount is the current number of Teams.
+	// TeamCount is the current number of Team resources.
 	// +optional
 	TeamCount int32 `json:"teamCount,omitempty"`
 
-	// ClusterCount is the current number of TenantClusters.
+	// ClusterCount is the current number of TenantCluster resources.
 	// +optional
 	ClusterCount int32 `json:"clusterCount,omitempty"`
 
-	// Gateway contains the managed Gateway resource status.
+	// Gateway contains the status of the managed Gateway resource.
 	// Only populated when Gateway exposure mode is configured.
 	// +optional
 	Gateway *GatewayStatus `json:"gateway,omitempty"`
 }
 
-// GatewayStatus contains the status of the managed Gateway resource.
+// GatewayStatus contains the status of the Butler-managed Gateway resource.
 type GatewayStatus struct {
-	// Ready indicates the Gateway is ready to accept traffic.
+	// Ready indicates the Gateway is programmed and ready to accept traffic.
 	// +optional
 	Ready bool `json:"ready,omitempty"`
 
@@ -222,7 +228,7 @@ type GatewayStatus struct {
 	Address string `json:"address,omitempty"`
 
 	// ListenerCount is the number of active listeners on the Gateway.
-	// Should be 2 when healthy (API server and Konnectivity).
+	// Should be 2 when healthy (kube-apiserver on 6443, konnectivity on 8132).
 	// +optional
 	ListenerCount int32 `json:"listenerCount,omitempty"`
 
@@ -274,9 +280,8 @@ func init() {
 	SchemeBuilder.Register(&ButlerConfig{}, &ButlerConfigList{})
 }
 
-// Helper methods
-
-// GetGatewayDomain returns the configured gateway domain or empty string.
+// GetGatewayDomain returns the configured gateway domain.
+// Returns empty string if gateway is not configured.
 func (bc *ButlerConfig) GetGatewayDomain() string {
 	if bc.Spec.ControlPlane != nil && bc.Spec.ControlPlane.Gateway != nil {
 		return bc.Spec.ControlPlane.Gateway.Domain
@@ -284,7 +289,7 @@ func (bc *ButlerConfig) GetGatewayDomain() string {
 	return ""
 }
 
-// GetGatewayName returns the gateway name with default.
+// GetGatewayName returns the gateway name with default fallback.
 func (bc *ButlerConfig) GetGatewayName() string {
 	if bc.Spec.ControlPlane != nil && bc.Spec.ControlPlane.Gateway != nil && bc.Spec.ControlPlane.Gateway.GatewayName != "" {
 		return bc.Spec.ControlPlane.Gateway.GatewayName
@@ -292,7 +297,7 @@ func (bc *ButlerConfig) GetGatewayName() string {
 	return "butler-control-plane"
 }
 
-// GetGatewayNamespace returns the gateway namespace with default.
+// GetGatewayNamespace returns the gateway namespace with default fallback.
 func (bc *ButlerConfig) GetGatewayNamespace() string {
 	if bc.Spec.ControlPlane != nil && bc.Spec.ControlPlane.Gateway != nil && bc.Spec.ControlPlane.Gateway.GatewayNamespace != "" {
 		return bc.Spec.ControlPlane.Gateway.GatewayNamespace
@@ -300,7 +305,7 @@ func (bc *ButlerConfig) GetGatewayNamespace() string {
 	return "butler-system"
 }
 
-// GetGatewayClassName returns the gateway class name with default.
+// GetGatewayClassName returns the gateway class name with default fallback.
 func (bc *ButlerConfig) GetGatewayClassName() string {
 	if bc.Spec.ControlPlane != nil && bc.Spec.ControlPlane.Gateway != nil && bc.Spec.ControlPlane.Gateway.GatewayClassName != "" {
 		return bc.Spec.ControlPlane.Gateway.GatewayClassName
@@ -308,7 +313,7 @@ func (bc *ButlerConfig) GetGatewayClassName() string {
 	return "cilium"
 }
 
-// GetDefaultExposureMode returns the default exposure mode with default.
+// GetDefaultExposureMode returns the default exposure mode with fallback.
 func (bc *ButlerConfig) GetDefaultExposureMode() ControlPlaneExposureMode {
 	if bc.Spec.ControlPlane != nil && bc.Spec.ControlPlane.DefaultExposureMode != "" {
 		return bc.Spec.ControlPlane.DefaultExposureMode
@@ -316,7 +321,7 @@ func (bc *ButlerConfig) GetDefaultExposureMode() ControlPlaneExposureMode {
 	return ControlPlaneExposureModeLoadBalancer
 }
 
-// IsGatewayConfigured returns true if gateway configuration is present.
+// IsGatewayConfigured returns true if gateway configuration is present and valid.
 func (bc *ButlerConfig) IsGatewayConfigured() bool {
 	return bc.Spec.ControlPlane != nil &&
 		bc.Spec.ControlPlane.Gateway != nil &&

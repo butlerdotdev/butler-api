@@ -90,8 +90,9 @@ spec:
                 description: DependsOn specifies other TenantAddons that must be ready
                   first.
                 items:
-                  description: LocalObjectReference references a resource in the same
-                    namespace.
+                  description: |-
+                    LocalObjectReference references a resource in the same namespace.
+                    This is the most common reference type within Butler.
                   properties:
                     name:
                       description: Name is the name of the resource.
