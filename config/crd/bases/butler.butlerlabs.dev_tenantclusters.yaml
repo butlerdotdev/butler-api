@@ -30,7 +30,7 @@ spec:
       name: Workers
       type: string
     - description: API endpoint
-      jsonPath: .status.controlPlaneEndpoint
+      jsonPath: .status.controlPlane.endpoint
       name: Endpoint
       type: string
     - jsonPath: .metadata.creationTimestamp
@@ -69,24 +69,6 @@ spec:
                   These are installed at cluster creation time.
                   Additional addons can be added via TenantAddon resources.
                 properties:
-                  certManager:
-                    description: CertManager configures cert-manager.
-                    properties:
-                      enabled:
-                        default: true
-                        description: Enabled indicates whether cert-manager should
-                          be installed.
-                        type: boolean
-                      values:
-                        description: Values are Helm values for customization.
-                        type: object
-                        x-kubernetes-preserve-unknown-fields: true
-                      version:
-                        description: Version is the addon version.
-                        type: string
-                    required:
-                    - version
-                    type: object
                   cni:
                     description: CNI configures the Container Network Interface.
                     properties:
@@ -106,8 +88,8 @@ spec:
                     required:
                     - version
                     type: object
-                  gitops:
-                    description: GitOps configures GitOps (Flux or ArgoCD).
+                  gitOps:
+                    description: GitOps configures GitOps tooling.
                     properties:
                       provider:
                         description: Provider is the GitOps provider.
@@ -170,6 +152,17 @@ spec:
                   loadBalancer:
                     description: LoadBalancer configures the load balancer.
                     properties:
+                      addressPool:
+                        description: AddressPool defines the IP address pool for LoadBalancer
+                          services.
+                        properties:
+                          end:
+                            description: End is the last IP in the pool.
+                            type: string
+                          start:
+                            description: Start is the first IP in the pool.
+                            type: string
+                        type: object
                       provider:
                         default: metallb
                         description: Provider is the load balancer provider.
@@ -187,7 +180,7 @@ spec:
                     - version
                     type: object
                   storage:
-                    description: Storage configures persistent storage.
+                    description: Storage configures storage provisioner.
                     properties:
                       provider:
                         description: Provider is the storage provider.
@@ -212,6 +205,7 @@ spec:
                   certSANs:
                     description: |-
                       CertSANs are additional Subject Alternative Names for the API server certificate.
+                      When using Gateway mode, the generated hostname is automatically added.
                       Use this to add custom DNS names or IPs for API server access.
                     items:
                       type: string
@@ -228,12 +222,33 @@ spec:
                     required:
                     - name
                     type: object
+                  exposureMode:
+                    description: |-
+                      ExposureMode defines how the control plane is exposed to clients.
+                      If not specified, inherits from ButlerConfig.spec.controlPlane.defaultExposureMode.
+                    enum:
+                    - Gateway
+                    - LoadBalancer
+                    - NodePort
+                    type: string
                   externalCloudProvider:
                     default: true
                     description: |-
                       ExternalCloudProvider enables --cloud-provider=external on apiserver and controller-manager.
                       Required for Harvester, vSphere, and other infrastructure providers.
                     type: boolean
+                  gateway:
+                    description: |-
+                      Gateway contains Gateway-specific configuration.
+                      Only used when ExposureMode is Gateway.
+                    properties:
+                      hostname:
+                        description: |-
+                          Hostname overrides the auto-generated hostname.
+                          If not specified, hostname is generated as {cluster-name}.{domain}
+                          where domain comes from ButlerConfig.spec.controlPlane.gateway.domain.
+                        type: string
+                    type: object
                   replicas:
                     default: 1
                     description: |-
@@ -244,8 +259,10 @@ spec:
                     minimum: 1
                     type: integer
                   serviceType:
-                    default: LoadBalancer
-                    description: ServiceType for the control plane endpoint.
+                    description: |-
+                      ServiceType for the control plane endpoint.
+                      DEPRECATED: Use ExposureMode instead. This field is maintained for backward
+                      compatibility and will be removed in a future version.
                     enum:
                     - LoadBalancer
                     - NodePort
@@ -298,7 +315,8 @@ spec:
                         description: Storage is the Proxmox storage to use.
                         type: string
                       templateID:
-                        description: TemplateID is the VM template ID.
+                        description: TemplateID is the VM template ID to clone.
+                        format: int32
                         type: integer
                     type: object
                 type: object
@@ -309,6 +327,29 @@ spec:
               managementPolicy:
                 description: ManagementPolicy defines how Butler manages this cluster.
                 properties:
+                  autoUpgrade:
+                    default: false
+                    description: AutoUpgrade enables automatic Kubernetes version
+                      upgrades.
+                    type: boolean
+                  maintenanceWindow:
+                    description: MaintenanceWindow defines when upgrades and maintenance
+                      can occur.
+                    properties:
+                      daysOfWeek:
+                        description: DaysOfWeek specifies which days maintenance is
+                          allowed.
+                        items:
+                          type: string
+                        type: array
+                      duration:
+                        description: Duration is how long the maintenance window lasts.
+                        type: string
+                      startTime:
+                        description: StartTime is the start time in HH:MM format (24-hour,
+                          UTC).
+                        type: string
+                    type: object
                   mode:
                     default: Active
                     description: Mode determines how Butler manages addons.
@@ -321,26 +362,18 @@ spec:
               networking:
                 description: Networking configures cluster networking.
                 properties:
-                  loadBalancerPool:
-                    description: LoadBalancerPool defines the IP pool for LoadBalancer
-                      services.
-                    properties:
-                      end:
-                        description: End is the last IP in the pool.
-                        type: string
-                      start:
-                        description: Start is the first IP in the pool.
-                        type: string
-                    required:
-                    - end
-                    - start
-                    type: object
+                  dnsServiceIP:
+                    default: 10.96.0.10
+                    description: |-
+                      DNSServiceIP is the IP for the DNS service.
+                      Must be within the ServiceCIDR range.
+                    type: string
                   podCIDR:
                     default: 10.244.0.0/16
                     description: PodCIDR is the CIDR for pod IPs.
                     type: string
                   serviceCIDR:
-                    default: 10.96.0.0/12
+                    default: 10.96.0.0/16
                     description: ServiceCIDR is the CIDR for service IPs.
                     type: string
                 type: object
@@ -493,8 +526,47 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              controlPlane:
+                description: ControlPlane contains control plane exposure status.
+                properties:
+                  endpoint:
+                    description: |-
+                      Endpoint is the control plane endpoint URL.
+                      Format depends on exposure mode:
+                      - Gateway: https://{hostname}:443
+                      - LoadBalancer: https://{ip}:6443
+                      - NodePort: https://{node-ip}:{port}
+                    type: string
+                  exposureMode:
+                    description: ExposureMode is the active exposure mode.
+                    enum:
+                    - Gateway
+                    - LoadBalancer
+                    - NodePort
+                    type: string
+                  gatewayReady:
+                    description: |-
+                      GatewayReady indicates the Gateway TLSRoute is ready (Gateway mode only).
+                      This is set by observing the Kamaji TenantControlPlane gateway status.
+                    type: boolean
+                  hostname:
+                    description: Hostname is the DNS hostname (Gateway mode only).
+                    type: string
+                  loadBalancerIP:
+                    description: LoadBalancerIP is the allocated IP (LoadBalancer
+                      mode only).
+                    type: string
+                  message:
+                    description: Message provides additional status information.
+                    type: string
+                  ready:
+                    description: Ready indicates the control plane endpoint is accessible.
+                    type: boolean
+                type: object
               controlPlaneEndpoint:
-                description: ControlPlaneEndpoint is the API server endpoint.
+                description: |-
+                  ControlPlaneEndpoint is the API server endpoint.
+                  DEPRECATED: Use ControlPlane.Endpoint instead.
                 type: string
               kubeconfigSecretRef:
                 description: KubeconfigSecretRef references the Secret containing
