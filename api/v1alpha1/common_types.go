@@ -20,6 +20,27 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+// ControlPlaneExposureMode defines how the control plane is exposed to clients.
+// +kubebuilder:validation:Enum=Gateway;LoadBalancer;NodePort
+type ControlPlaneExposureMode string
+
+const (
+	// ControlPlaneExposureModeGateway exposes the control plane via Gateway API
+	// with SNI-based TLS routing. Multiple tenant control planes share a single
+	// Gateway IP, differentiated by hostname. Most IP-efficient option.
+	// Requires: Gateway API CRDs, Gateway controller (e.g., Cilium), DNS configuration.
+	ControlPlaneExposureModeGateway ControlPlaneExposureMode = "Gateway"
+
+	// ControlPlaneExposureModeLoadBalancer exposes the control plane via a dedicated
+	// LoadBalancer Service. Each tenant gets its own IP address. Simple but
+	// consumes one IP per tenant cluster.
+	ControlPlaneExposureModeLoadBalancer ControlPlaneExposureMode = "LoadBalancer"
+
+	// ControlPlaneExposureModeNodePort exposes the control plane via NodePort Service.
+	// Useful for edge deployments or environments without LoadBalancer support.
+	ControlPlaneExposureModeNodePort ControlPlaneExposureMode = "NodePort"
+)
+
 // ProviderReference references a ProviderConfig resource.
 type ProviderReference struct {
 	// Name is the name of the ProviderConfig resource.
@@ -303,4 +324,7 @@ const (
 
 	// ReasonQuotaExceeded indicates a resource quota was exceeded.
 	ReasonQuotaExceeded = "QuotaExceeded"
+
+	// ReasonGatewayNotConfigured indicates Gateway mode requested but not configured.
+	ReasonGatewayNotConfigured = "GatewayNotConfigured"
 )

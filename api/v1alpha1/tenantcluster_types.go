@@ -111,13 +111,18 @@ type ControlPlaneSpec struct {
 	// +optional
 	DataStoreRef *LocalObjectReference `json:"dataStoreRef,omitempty"`
 
-	// ServiceType for the control plane endpoint.
-	// +kubebuilder:validation:Enum=LoadBalancer;NodePort;ClusterIP
-	// +kubebuilder:default="LoadBalancer"
+	// ExposureMode defines how the control plane is exposed to clients.
+	// If not specified, inherits from ButlerConfig.spec.controlPlane.defaultExposureMode.
 	// +optional
-	ServiceType string `json:"serviceType,omitempty"`
+	ExposureMode ControlPlaneExposureMode `json:"exposureMode,omitempty"`
+
+	// Gateway contains Gateway-specific configuration.
+	// Only used when ExposureMode is Gateway.
+	// +optional
+	Gateway *TenantGatewayConfig `json:"gateway,omitempty"`
 
 	// CertSANs are additional Subject Alternative Names for the API server certificate.
+	// When using Gateway mode, the generated hostname is automatically added.
 	// Use this to add custom DNS names or IPs for API server access.
 	// +optional
 	CertSANs []string `json:"certSANs,omitempty"`
@@ -127,6 +132,22 @@ type ControlPlaneSpec struct {
 	// +kubebuilder:default=true
 	// +optional
 	ExternalCloudProvider *bool `json:"externalCloudProvider,omitempty"`
+
+	// ServiceType for the control plane endpoint.
+	// DEPRECATED: Use ExposureMode instead. This field is maintained for backward
+	// compatibility and will be removed in a future version.
+	// +kubebuilder:validation:Enum=LoadBalancer;NodePort;ClusterIP
+	// +optional
+	ServiceType string `json:"serviceType,omitempty"`
+}
+
+// TenantGatewayConfig contains per-tenant Gateway configuration.
+type TenantGatewayConfig struct {
+	// Hostname overrides the auto-generated hostname.
+	// If not specified, hostname is generated as {cluster-name}.{domain}
+	// where domain comes from ButlerConfig.spec.controlPlane.gateway.domain.
+	// +optional
+	Hostname string `json:"hostname,omitempty"`
 }
 
 // WorkersSpec configures worker nodes.
@@ -241,9 +262,9 @@ type ProxmoxOverride struct {
 	// +optional
 	Storage string `json:"storage,omitempty"`
 
-	// TemplateID is the VM template ID.
+	// TemplateID is the VM template ID to clone.
 	// +optional
-	TemplateID int `json:"templateID,omitempty"`
+	TemplateID int32 `json:"templateID,omitempty"`
 }
 
 // NetworkingSpec configures cluster networking.
@@ -254,35 +275,50 @@ type NetworkingSpec struct {
 	PodCIDR string `json:"podCIDR,omitempty"`
 
 	// ServiceCIDR is the CIDR for service IPs.
-	// +kubebuilder:default="10.96.0.0/12"
+	// +kubebuilder:default="10.96.0.0/16"
 	// +optional
 	ServiceCIDR string `json:"serviceCIDR,omitempty"`
 
-	// LoadBalancerPool defines the IP pool for LoadBalancer services.
+	// DNSServiceIP is the IP for the DNS service.
+	// Must be within the ServiceCIDR range.
+	// +kubebuilder:default="10.96.0.10"
 	// +optional
-	LoadBalancerPool *IPPool `json:"loadBalancerPool,omitempty"`
+	DNSServiceIP string `json:"dnsServiceIP,omitempty"`
 }
 
-// IPPool defines a range of IP addresses.
-type IPPool struct {
-	// Start is the first IP in the pool.
-	// +kubebuilder:validation:Required
-	Start string `json:"start"`
-
-	// End is the last IP in the pool.
-	// +kubebuilder:validation:Required
-	End string `json:"end"`
-}
-
-// ManagementPolicySpec defines how Butler manages the cluster.
+// ManagementPolicySpec defines how Butler manages this cluster.
 type ManagementPolicySpec struct {
 	// Mode determines how Butler manages addons.
 	// +kubebuilder:default="Active"
 	// +optional
 	Mode ManagementMode `json:"mode,omitempty"`
+
+	// AutoUpgrade enables automatic Kubernetes version upgrades.
+	// +kubebuilder:default=false
+	// +optional
+	AutoUpgrade bool `json:"autoUpgrade,omitempty"`
+
+	// MaintenanceWindow defines when upgrades and maintenance can occur.
+	// +optional
+	MaintenanceWindow *MaintenanceWindowSpec `json:"maintenanceWindow,omitempty"`
 }
 
-// AddonsSpec defines the addons to install.
+// MaintenanceWindowSpec defines when maintenance can occur.
+type MaintenanceWindowSpec struct {
+	// DaysOfWeek specifies which days maintenance is allowed.
+	// +optional
+	DaysOfWeek []string `json:"daysOfWeek,omitempty"`
+
+	// StartTime is the start time in HH:MM format (24-hour, UTC).
+	// +optional
+	StartTime string `json:"startTime,omitempty"`
+
+	// Duration is how long the maintenance window lasts.
+	// +optional
+	Duration string `json:"duration,omitempty"`
+}
+
+// AddonsSpec defines addons to install.
 type AddonsSpec struct {
 	// CNI configures the Container Network Interface.
 	// +optional
@@ -292,11 +328,7 @@ type AddonsSpec struct {
 	// +optional
 	LoadBalancer *LoadBalancerSpec `json:"loadBalancer,omitempty"`
 
-	// CertManager configures cert-manager.
-	// +optional
-	CertManager *CertManagerSpec `json:"certManager,omitempty"`
-
-	// Storage configures persistent storage.
+	// Storage configures storage provisioner.
 	// +optional
 	Storage *StorageSpec `json:"storage,omitempty"`
 
@@ -304,12 +336,12 @@ type AddonsSpec struct {
 	// +optional
 	Ingress *IngressSpec `json:"ingress,omitempty"`
 
-	// GitOps configures GitOps (Flux or ArgoCD).
+	// GitOps configures GitOps tooling.
 	// +optional
-	GitOps *GitOpsSpec `json:"gitops,omitempty"`
+	GitOps *GitOpsSpec `json:"gitOps,omitempty"`
 }
 
-// CNISpec configures the CNI addon.
+// CNISpec configures the Container Network Interface.
 type CNISpec struct {
 	// Provider is the CNI provider.
 	// +kubebuilder:validation:Enum=cilium
@@ -327,7 +359,7 @@ type CNISpec struct {
 	Values *ExtensionValues `json:"values,omitempty"`
 }
 
-// LoadBalancerSpec configures the load balancer addon.
+// LoadBalancerSpec configures the load balancer.
 type LoadBalancerSpec struct {
 	// Provider is the load balancer provider.
 	// +kubebuilder:validation:Enum=metallb
@@ -339,22 +371,9 @@ type LoadBalancerSpec struct {
 	// +kubebuilder:validation:Required
 	Version string `json:"version"`
 
-	// Values are Helm values for customization.
+	// AddressPool defines the IP address pool for LoadBalancer services.
 	// +optional
-	// +kubebuilder:pruning:PreserveUnknownFields
-	Values *ExtensionValues `json:"values,omitempty"`
-}
-
-// CertManagerSpec configures cert-manager.
-type CertManagerSpec struct {
-	// Enabled indicates whether cert-manager should be installed.
-	// +kubebuilder:default=true
-	// +optional
-	Enabled bool `json:"enabled,omitempty"`
-
-	// Version is the addon version.
-	// +kubebuilder:validation:Required
-	Version string `json:"version"`
+	AddressPool *AddressPoolSpec `json:"addressPool,omitempty"`
 
 	// Values are Helm values for customization.
 	// +optional
@@ -362,7 +381,18 @@ type CertManagerSpec struct {
 	Values *ExtensionValues `json:"values,omitempty"`
 }
 
-// StorageSpec configures persistent storage.
+// AddressPoolSpec defines a MetalLB address pool.
+type AddressPoolSpec struct {
+	// Start is the first IP in the pool.
+	// +optional
+	Start string `json:"start,omitempty"`
+
+	// End is the last IP in the pool.
+	// +optional
+	End string `json:"end,omitempty"`
+}
+
+// StorageSpec configures storage provisioner.
 type StorageSpec struct {
 	// Provider is the storage provider.
 	// +kubebuilder:validation:Enum=longhorn;linstor
@@ -484,8 +514,13 @@ type TenantClusterStatus struct {
 	TenantNamespace string `json:"tenantNamespace,omitempty"`
 
 	// ControlPlaneEndpoint is the API server endpoint.
+	// DEPRECATED: Use ControlPlane.Endpoint instead.
 	// +optional
 	ControlPlaneEndpoint string `json:"controlPlaneEndpoint,omitempty"`
+
+	// ControlPlane contains control plane exposure status.
+	// +optional
+	ControlPlane *ControlPlaneStatus `json:"controlPlane,omitempty"`
 
 	// KubeconfigSecretRef references the Secret containing the kubeconfig.
 	// +optional
@@ -510,6 +545,42 @@ type TenantClusterStatus struct {
 	// WorkerNodesDesired is the desired count of worker nodes
 	// +optional
 	WorkerNodesDesired int32 `json:"workerNodesDesired,omitempty"`
+}
+
+// ControlPlaneStatus contains control plane exposure status.
+type ControlPlaneStatus struct {
+	// ExposureMode is the active exposure mode.
+	// +optional
+	ExposureMode ControlPlaneExposureMode `json:"exposureMode,omitempty"`
+
+	// Endpoint is the control plane endpoint URL.
+	// Format depends on exposure mode:
+	// - Gateway: https://{hostname}:443
+	// - LoadBalancer: https://{ip}:6443
+	// - NodePort: https://{node-ip}:{port}
+	// +optional
+	Endpoint string `json:"endpoint,omitempty"`
+
+	// Hostname is the DNS hostname (Gateway mode only).
+	// +optional
+	Hostname string `json:"hostname,omitempty"`
+
+	// GatewayReady indicates the Gateway TLSRoute is ready (Gateway mode only).
+	// This is set by observing the Kamaji TenantControlPlane gateway status.
+	// +optional
+	GatewayReady bool `json:"gatewayReady,omitempty"`
+
+	// LoadBalancerIP is the allocated IP (LoadBalancer mode only).
+	// +optional
+	LoadBalancerIP string `json:"loadBalancerIP,omitempty"`
+
+	// Ready indicates the control plane endpoint is accessible.
+	// +optional
+	Ready bool `json:"ready,omitempty"`
+
+	// Message provides additional status information.
+	// +optional
+	Message string `json:"message,omitempty"`
 }
 
 // ObservedClusterState captures the current state of the cluster.
@@ -573,6 +644,9 @@ const (
 
 	// TenantClusterConditionReady indicates the cluster is fully ready.
 	TenantClusterConditionReady = "Ready"
+
+	// TenantClusterConditionGatewayReady indicates Gateway routing is ready (Gateway mode only).
+	TenantClusterConditionGatewayReady = "GatewayReady"
 )
 
 // +kubebuilder:object:root=true
@@ -581,7 +655,7 @@ const (
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",description="Cluster phase"
 // +kubebuilder:printcolumn:name="K8s Version",type="string",JSONPath=".spec.kubernetesVersion",description="Kubernetes version"
 // +kubebuilder:printcolumn:name="Workers",type="string",JSONPath=".status.observedState.workers.ready",description="Ready workers"
-// +kubebuilder:printcolumn:name="Endpoint",type="string",JSONPath=".status.controlPlaneEndpoint",description="API endpoint"
+// +kubebuilder:printcolumn:name="Endpoint",type="string",JSONPath=".status.controlPlane.endpoint",description="API endpoint"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // TenantCluster is the Schema for the tenantclusters API.
@@ -605,4 +679,38 @@ type TenantClusterList struct {
 
 func init() {
 	SchemeBuilder.Register(&TenantCluster{}, &TenantClusterList{})
+}
+
+// Helper methods
+
+// GetExposureMode returns the effective exposure mode, considering defaults.
+// Returns empty string if no mode is configured (caller should check ButlerConfig).
+func (tc *TenantCluster) GetExposureMode() ControlPlaneExposureMode {
+	return tc.Spec.ControlPlane.ExposureMode
+}
+
+// GetGatewayHostname returns the configured or generated gateway hostname.
+// Returns empty string if not using gateway mode or no hostname is set.
+func (tc *TenantCluster) GetGatewayHostname() string {
+	if tc.Spec.ControlPlane.Gateway != nil && tc.Spec.ControlPlane.Gateway.Hostname != "" {
+		return tc.Spec.ControlPlane.Gateway.Hostname
+	}
+	return ""
+}
+
+// GenerateGatewayHostname generates a hostname for this cluster given a domain.
+func (tc *TenantCluster) GenerateGatewayHostname(domain string) string {
+	if domain == "" {
+		return ""
+	}
+	return tc.Name + "." + domain
+}
+
+// GetControlPlaneEndpoint returns the control plane endpoint from status.
+// Prefers the new ControlPlane.Endpoint, falls back to deprecated ControlPlaneEndpoint.
+func (tc *TenantCluster) GetControlPlaneEndpoint() string {
+	if tc.Status.ControlPlane != nil && tc.Status.ControlPlane.Endpoint != "" {
+		return tc.Status.ControlPlane.Endpoint
+	}
+	return tc.Status.ControlPlaneEndpoint
 }

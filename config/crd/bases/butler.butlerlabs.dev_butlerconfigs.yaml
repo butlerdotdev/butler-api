@@ -21,6 +21,10 @@ spec:
       jsonPath: .spec.multiTenancy.mode
       name: Mode
       type: string
+    - description: Default CP exposure
+      jsonPath: .spec.controlPlane.defaultExposureMode
+      name: Exposure
+      type: string
     - description: Number of teams
       jsonPath: .status.teamCount
       name: Teams
@@ -60,6 +64,64 @@ spec:
           spec:
             description: ButlerConfigSpec defines the desired state of ButlerConfig.
             properties:
+              controlPlane:
+                description: ControlPlane configures platform-wide control plane exposure
+                  settings.
+                properties:
+                  defaultExposureMode:
+                    default: LoadBalancer
+                    description: |-
+                      DefaultExposureMode is the default exposure mode for new TenantClusters.
+                      TenantClusters can override this in their spec.
+                      If not specified, defaults to LoadBalancer for backward compatibility.
+                    enum:
+                    - Gateway
+                    - LoadBalancer
+                    - NodePort
+                    type: string
+                  gateway:
+                    description: |-
+                      Gateway configures Gateway API exposure settings.
+                      Required when DefaultExposureMode is Gateway or any TenantCluster uses Gateway mode.
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Annotations are additional annotations to apply to the Gateway resource.
+                          Use this for Gateway controller-specific configuration.
+                        type: object
+                      domain:
+                        description: |-
+                          Domain is the base domain for control plane hostnames.
+                          TenantClusters will be exposed as {cluster-name}.{domain}.
+                          Example: "k8s.example.com" results in hostnames like "tenant-1.k8s.example.com"
+                          DNS must be configured with a wildcard record pointing to the Gateway address.
+                          Required when using Gateway exposure mode.
+                        minLength: 1
+                        type: string
+                      gatewayClassName:
+                        default: cilium
+                        description: |-
+                          GatewayClassName is the GatewayClass to use for the Gateway.
+                          Must reference an existing GatewayClass in the cluster.
+                          Common values: "cilium", "istio", "envoy-gateway"
+                        type: string
+                      gatewayName:
+                        default: butler-control-plane
+                        description: |-
+                          GatewayName is the name of the Gateway resource Butler manages.
+                          Butler creates and owns this Gateway resource.
+                        type: string
+                      gatewayNamespace:
+                        default: butler-system
+                        description: GatewayNamespace is the namespace for the Gateway
+                          resource.
+                        type: string
+                    required:
+                    - domain
+                    type: object
+                type: object
               defaultAddonVersions:
                 description: |-
                   DefaultAddonVersions specifies the default versions for addons.
@@ -224,6 +286,35 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              gateway:
+                description: |-
+                  Gateway contains the managed Gateway resource status.
+                  Only populated when Gateway exposure mode is configured.
+                properties:
+                  address:
+                    description: |-
+                      Address is the Gateway's external address (IP or hostname).
+                      This is the address that DNS wildcard records should point to.
+                    type: string
+                  listenerCount:
+                    description: |-
+                      ListenerCount is the number of active listeners on the Gateway.
+                      Should be 2 when healthy (API server and Konnectivity).
+                    format: int32
+                    type: integer
+                  message:
+                    description: Message provides additional information about the
+                      Gateway status.
+                    type: string
+                  ready:
+                    description: Ready indicates the Gateway is ready to accept traffic.
+                    type: boolean
+                  tenantCount:
+                    description: TenantCount is the number of TenantClusters using
+                      this Gateway.
+                    format: int32
+                    type: integer
+                type: object
               observedGeneration:
                 description: ObservedGeneration is the last observed generation.
                 format: int64
