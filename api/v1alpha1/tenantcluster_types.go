@@ -68,7 +68,7 @@ type TenantClusterSpec struct {
 	// +optional
 	ProviderConfigRef *LocalObjectReference `json:"providerConfigRef,omitempty"`
 
-	// ControlPlane configures the Kamaji-hosted control plane.
+	// ControlPlane configures the Steward-hosted control plane.
 	// +optional
 	ControlPlane ControlPlaneSpec `json:"controlPlane,omitempty"`
 
@@ -96,17 +96,17 @@ type TenantClusterSpec struct {
 	InfrastructureOverride *InfrastructureOverride `json:"infrastructureOverride,omitempty"`
 }
 
-// ControlPlaneSpec configures the Kamaji-hosted control plane.
+// ControlPlaneSpec configures the Steward-hosted control plane.
 type ControlPlaneSpec struct {
 	// Replicas is the number of API server replicas.
-	// Kamaji manages high availability automatically.
+	// Steward manages high availability automatically.
 	// +kubebuilder:default=1
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=3
 	// +optional
 	Replicas int32 `json:"replicas,omitempty"`
 
-	// DataStoreRef references the Kamaji DataStore to use.
+	// DataStoreRef references the Steward DataStore to use.
 	// If not specified, the default DataStore is used.
 	// +optional
 	DataStoreRef *LocalObjectReference `json:"dataStoreRef,omitempty"`
@@ -479,7 +479,7 @@ type TenantClusterStatus struct {
 	// +optional
 	Phase TenantClusterPhase `json:"phase,omitempty"`
 
-	// TenantNamespace is the namespace containing CAPI/Kamaji resources.
+	// TenantNamespace is the namespace containing CAPI/Steward resources.
 	// +optional
 	TenantNamespace string `json:"tenantNamespace,omitempty"`
 
