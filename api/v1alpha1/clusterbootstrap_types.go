@@ -345,7 +345,7 @@ type ClusterBootstrapAddonsSpec struct {
 	// +optional
 	Ingress *IngressAddonSpec `json:"ingress,omitempty"`
 
-	// ControlPlaneProvider defines hosted control plane provider (Kamaji)
+	// ControlPlaneProvider defines hosted control plane provider (Steward)
 	// +optional
 	ControlPlaneProvider *ControlPlaneProviderAddonSpec `json:"controlPlaneProvider,omitempty"`
 
@@ -467,11 +467,11 @@ type IngressAddonSpec struct {
 // ControlPlaneProviderAddonSpec defines hosted control plane provider configuration
 type ControlPlaneProviderAddonSpec struct {
 	// Type is the control plane provider type
-	// +kubebuilder:validation:Enum=kamaji;none
-	// +kubebuilder:default=kamaji
+	// +kubebuilder:validation:Enum=steward;kamaji;none
+	// +kubebuilder:default=steward
 	Type string `json:"type,omitempty"`
 
-	// Enabled controls whether Kamaji is installed
+	// Enabled controls whether Steward is installed
 	// +optional
 	// +kubebuilder:default=true
 	Enabled *bool `json:"enabled,omitempty"`
