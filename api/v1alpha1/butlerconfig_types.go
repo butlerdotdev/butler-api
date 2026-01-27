@@ -67,6 +67,12 @@ type ButlerConfigSpec struct {
 	// Used when TenantCluster doesn't specify versions.
 	// +optional
 	DefaultAddonVersions *AddonVersions `json:"defaultAddonVersions,omitempty"`
+
+	// GitProvider configures the default Git provider for GitOps operations.
+	// This enables features like exporting clusters to GitOps, enabling Flux
+	// on clusters, and managing addons via Git repositories.
+	// +optional
+	GitProvider *GitProviderConfig `json:"gitProvider,omitempty"`
 }
 
 // MultiTenancyConfig configures multi-tenancy behavior.
@@ -148,12 +154,17 @@ type ButlerConfigStatus struct {
 	// ClusterCount is the current number of TenantClusters.
 	// +optional
 	ClusterCount int32 `json:"clusterCount,omitempty"`
+
+	// GitProvider shows the status of the configured Git provider.
+	// +optional
+	GitProvider *GitProviderStatus `json:"gitProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster,shortName=bc
 // +kubebuilder:printcolumn:name="Mode",type="string",JSONPath=".spec.multiTenancy.mode",description="Multi-tenancy mode"
+// +kubebuilder:printcolumn:name="Git",type="string",JSONPath=".spec.gitProvider.type",description="Git provider"
 // +kubebuilder:printcolumn:name="Teams",type="integer",JSONPath=".status.teamCount",description="Number of teams"
 // +kubebuilder:printcolumn:name="Clusters",type="integer",JSONPath=".status.clusterCount",description="Number of clusters"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
@@ -180,4 +191,19 @@ type ButlerConfigList struct {
 
 func init() {
 	SchemeBuilder.Register(&ButlerConfig{}, &ButlerConfigList{})
+}
+
+// Helper methods
+
+// IsGitProviderConfigured returns true if a Git provider is configured.
+func (c *ButlerConfig) IsGitProviderConfigured() bool {
+	return c.Spec.GitProvider != nil && c.Spec.GitProvider.SecretRef.Name != ""
+}
+
+// GetGitProviderURL returns the Git provider URL with a sensible default.
+func (c *ButlerConfig) GetGitProviderURL() string {
+	if c.Spec.GitProvider == nil || c.Spec.GitProvider.URL == "" {
+		return "https://api.github.com"
+	}
+	return c.Spec.GitProvider.URL
 }

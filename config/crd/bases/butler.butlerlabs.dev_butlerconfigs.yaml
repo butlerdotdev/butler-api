@@ -21,6 +21,10 @@ spec:
       jsonPath: .spec.multiTenancy.mode
       name: Mode
       type: string
+    - description: Git provider
+      jsonPath: .spec.gitProvider.type
+      name: Git
+      type: string
     - description: Number of teams
       jsonPath: .status.teamCount
       name: Teams
@@ -143,6 +147,50 @@ spec:
                     minimum: 1
                     type: integer
                 type: object
+              gitProvider:
+                description: |-
+                  GitProvider configures the default Git provider for GitOps operations.
+                  This enables features like exporting clusters to GitOps, enabling Flux
+                  on clusters, and managing addons via Git repositories.
+                properties:
+                  organization:
+                    description: |-
+                      Organization is the default organization/group for repositories.
+                      When set, repository listings will be scoped to this org.
+                    type: string
+                  secretRef:
+                    description: |-
+                      SecretRef references the Secret containing credentials.
+                      Required keys depend on provider type:
+                      - GitHub: "token" (Personal Access Token with repo scope)
+                      - GitLab: "token" (Personal Access Token with api scope)
+                      - Bitbucket: "username" and "app-password"
+                    properties:
+                      name:
+                        description: Name is the name of the resource.
+                        minLength: 1
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  type:
+                    description: Type is the Git provider type.
+                    enum:
+                    - github
+                    - gitlab
+                    - bitbucket
+                    type: string
+                  url:
+                    default: https://api.github.com
+                    description: |-
+                      URL is the Git provider API URL.
+                      For GitHub: https://api.github.com (or https://github.example.com/api/v3 for enterprise)
+                      For GitLab: https://gitlab.com (or self-hosted URL)
+                    type: string
+                required:
+                - secretRef
+                - type
+                type: object
               multiTenancy:
                 description: MultiTenancy configures how multi-tenancy is handled.
                 properties:
@@ -224,6 +272,25 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              gitProvider:
+                description: GitProvider shows the status of the configured Git provider.
+                properties:
+                  connected:
+                    description: Connected indicates whether the provider credentials
+                      are valid.
+                    type: boolean
+                  lastValidated:
+                    description: LastValidated is when the credentials were last validated.
+                    format: date-time
+                    type: string
+                  message:
+                    description: Message provides additional status information.
+                    type: string
+                  username:
+                    description: Username is the authenticated username (from token
+                      validation).
+                    type: string
+                type: object
               observedGeneration:
                 description: ObservedGeneration is the last observed generation.
                 format: int64
