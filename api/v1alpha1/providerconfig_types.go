@@ -148,9 +148,10 @@ type ProxmoxProviderConfig struct {
 	// +kubebuilder:validation:Required
 	Storage string `json:"storage"`
 
-	// TemplateID is the VM template ID to clone.
+	// TemplateID is the location of the ISO to use for VM creation
+	// i.e. local:iso/ubuntu-22.04.iso
 	// +optional
-	TemplateID int32 `json:"templateID,omitempty"`
+	TemplateID string `json:"templateID,omitempty"`
 
 	// VMIDRange defines the range of VM IDs to use.
 	// +optional
