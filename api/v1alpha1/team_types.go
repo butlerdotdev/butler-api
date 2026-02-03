@@ -142,6 +142,12 @@ type TeamGroup struct {
 	// +kubebuilder:default="viewer"
 	// +optional
 	Role TeamRole `json:"role,omitempty"`
+
+	// IdentityProvider is the name of the IdentityProvider CRD this group comes from.
+	// If specified, only users authenticating through this IdP will be matched.
+	// If not specified, the group name will be matched against groups from any IdP.
+	// +optional
+	IdentityProvider string `json:"identityProvider,omitempty"`
 }
 
 // TeamPhase represents the current phase of a Team.

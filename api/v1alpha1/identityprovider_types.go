@@ -127,6 +127,12 @@ type OIDCConfig struct {
 	// +kubebuilder:default=false
 	// +optional
 	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
+
+	// GoogleWorkspace contains optional Google Workspace Admin SDK configuration
+	// for fetching user group memberships. Required because Google OIDC tokens
+	// don't include groups by default.
+	// +optional
+	GoogleWorkspace *GoogleWorkspaceConfig `json:"googleWorkspace,omitempty"`
 }
 
 // IdentityProviderStatus defines the observed state of IdentityProvider.
@@ -175,6 +181,21 @@ type OIDCDiscoveredEndpoints struct {
 	// JWKSURI is the JSON Web Key Set URL for token validation.
 	// +optional
 	JWKSURI string `json:"jwksURI,omitempty"`
+}
+
+// GoogleWorkspaceConfig contains configuration for fetching groups from
+// Google Workspace using the Admin SDK Directory API.
+type GoogleWorkspaceConfig struct {
+	// ServiceAccountSecretRef references a Secret containing the service account
+	// JSON key file. The Secret must contain a key named "service-account.json".
+	// +kubebuilder:validation:Required
+	ServiceAccountSecretRef SecretReference `json:"serviceAccountSecretRef"`
+
+	// AdminEmail is the email address of a Google Workspace super admin.
+	// The service account will impersonate this user to access the Admin SDK.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Format=email
+	AdminEmail string `json:"adminEmail"`
 }
 
 // IdentityProvider condition types.
