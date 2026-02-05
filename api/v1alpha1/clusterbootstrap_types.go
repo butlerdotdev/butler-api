@@ -99,6 +99,16 @@ type ControlPlaneExposureSpec struct {
 	// +optional
 	IngressClassName string `json:"ingressClassName,omitempty"`
 
+	// ControllerType specifies the ingress controller type for automatic TLS passthrough.
+	// Used when Mode is Ingress. Supported values:
+	// - "haproxy": Uses haproxy.org/ssl-passthrough annotation
+	// - "nginx": Uses nginx.ingress.kubernetes.io/ssl-passthrough annotation
+	// - "traefik": Creates IngressRouteTCP instead of standard Ingress
+	// - "generic": No automatic annotations, use custom annotations in Steward config
+	// +kubebuilder:validation:Enum=haproxy;nginx;traefik;generic
+	// +optional
+	ControllerType string `json:"controllerType,omitempty"`
+
 	// GatewayRef references the Gateway resource when Mode is Gateway.
 	// Format: "namespace/name"
 	// +optional
