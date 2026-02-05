@@ -73,6 +73,12 @@ type ButlerConfigSpec struct {
 	// on clusters, and managing addons via Git repositories.
 	// +optional
 	GitProvider *GitProviderConfig `json:"gitProvider,omitempty"`
+
+	// ControlPlaneExposure configures how tenant control planes are exposed.
+	// This is a platform-level setting populated from ClusterBootstrap during
+	// initial setup and inherited by all TenantClusters.
+	// +optional
+	ControlPlaneExposure *ControlPlaneExposureSpec `json:"controlPlaneExposure,omitempty"`
 }
 
 // MultiTenancyConfig configures multi-tenancy behavior.
@@ -158,6 +164,15 @@ type ButlerConfigStatus struct {
 	// GitProvider shows the status of the configured Git provider.
 	// +optional
 	GitProvider *GitProviderStatus `json:"gitProvider,omitempty"`
+
+	// ControlPlaneExposureMode is the active control plane exposure mode.
+	// +optional
+	ControlPlaneExposureMode ControlPlaneExposureMode `json:"controlPlaneExposureMode,omitempty"`
+
+	// TCPProxyRequired indicates if tcp-proxy is auto-enabled for tenants.
+	// True when ControlPlaneExposureMode is Ingress or Gateway.
+	// +optional
+	TCPProxyRequired bool `json:"tcpProxyRequired,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -206,4 +221,43 @@ func (c *ButlerConfig) GetGitProviderURL() string {
 		return "https://api.github.com"
 	}
 	return c.Spec.GitProvider.URL
+}
+
+// GetControlPlaneExposureMode returns the control plane exposure mode, defaulting to LoadBalancer.
+func (c *ButlerConfig) GetControlPlaneExposureMode() ControlPlaneExposureMode {
+	if c.Spec.ControlPlaneExposure == nil || c.Spec.ControlPlaneExposure.Mode == "" {
+		return ControlPlaneExposureModeLoadBalancer
+	}
+	return c.Spec.ControlPlaneExposure.Mode
+}
+
+// IsTCPProxyRequired returns true if tcp-proxy should be auto-enabled for tenants.
+// This is true when the exposure mode is Ingress or Gateway.
+func (c *ButlerConfig) IsTCPProxyRequired() bool {
+	mode := c.GetControlPlaneExposureMode()
+	return mode == ControlPlaneExposureModeIngress || mode == ControlPlaneExposureModeGateway
+}
+
+// GetControlPlaneExposureHostname returns the hostname pattern for tenant API servers.
+func (c *ButlerConfig) GetControlPlaneExposureHostname() string {
+	if c.Spec.ControlPlaneExposure == nil {
+		return ""
+	}
+	return c.Spec.ControlPlaneExposure.Hostname
+}
+
+// GetControlPlaneExposureGatewayRef returns the Gateway reference for Gateway mode.
+func (c *ButlerConfig) GetControlPlaneExposureGatewayRef() string {
+	if c.Spec.ControlPlaneExposure == nil {
+		return ""
+	}
+	return c.Spec.ControlPlaneExposure.GatewayRef
+}
+
+// GetControlPlaneExposureIngressClassName returns the Ingress class name for Ingress mode.
+func (c *ButlerConfig) GetControlPlaneExposureIngressClassName() string {
+	if c.Spec.ControlPlaneExposure == nil {
+		return ""
+	}
+	return c.Spec.ControlPlaneExposure.IngressClassName
 }

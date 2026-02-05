@@ -458,6 +458,42 @@ spec:
                 - controlPlane
                 - name
                 type: object
+              controlPlaneExposure:
+                description: |-
+                  ControlPlaneExposure configures how tenant control planes are exposed.
+                  This is a platform-level setting written to ButlerConfig after bootstrap
+                  and inherited by all TenantClusters.
+                  Defaults to LoadBalancer mode if not specified.
+                properties:
+                  gatewayRef:
+                    description: |-
+                      GatewayRef references the Gateway resource when Mode is Gateway.
+                      Format: "namespace/name"
+                    type: string
+                  hostname:
+                    description: |-
+                      Hostname is the wildcard domain for tenant API servers.
+                      Required when Mode is Ingress or Gateway.
+                      Example: "*.k8s.platform.example.com"
+                      Tenant clusters get: "{cluster}.{namespace}.k8s.platform.example.com"
+                    type: string
+                  ingressClassName:
+                    description: IngressClassName specifies the Ingress class when
+                      Mode is Ingress.
+                    type: string
+                  mode:
+                    default: LoadBalancer
+                    description: |-
+                      Mode determines how tenant API servers are exposed.
+                      LoadBalancer: 1 IP per tenant, direct access (default)
+                      Ingress: L7 proxy via Ingress controller with TLS passthrough, shared IP
+                      Gateway: L4/L7 via Gateway API TLSRoute, shared IP
+                    enum:
+                    - LoadBalancer
+                    - Ingress
+                    - Gateway
+                    type: string
+                type: object
               network:
                 description: Network defines network configuration for the cluster
                 properties:
@@ -710,6 +746,16 @@ spec:
                 type: string
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: hostname is required when controlPlaneExposure.mode is Ingress
+          rule: '!has(self.spec.controlPlaneExposure) || self.spec.controlPlaneExposure.mode
+            != ''Ingress'' || self.spec.controlPlaneExposure.hostname != '''''
+        - message: hostname is required when controlPlaneExposure.mode is Gateway
+          rule: '!has(self.spec.controlPlaneExposure) || self.spec.controlPlaneExposure.mode
+            != ''Gateway'' || self.spec.controlPlaneExposure.hostname != '''''
+        - message: gatewayRef is required when controlPlaneExposure.mode is Gateway
+          rule: '!has(self.spec.controlPlaneExposure) || self.spec.controlPlaneExposure.mode
+            != ''Gateway'' || self.spec.controlPlaneExposure.gatewayRef != '''''
     served: true
     storage: true
     subresources:
