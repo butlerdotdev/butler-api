@@ -244,8 +244,10 @@ spec:
                     minimum: 1
                     type: integer
                   serviceType:
-                    default: LoadBalancer
-                    description: ServiceType for the control plane endpoint.
+                    description: |-
+                      ServiceType for the control plane endpoint.
+                      If not specified, inherits from ButlerConfig.spec.controlPlaneExposure.mode.
+                      Only set this to override the platform-level setting for this specific cluster.
                     enum:
                     - LoadBalancer
                     - NodePort
