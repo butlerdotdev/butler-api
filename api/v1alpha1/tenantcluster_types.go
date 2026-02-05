@@ -112,8 +112,9 @@ type ControlPlaneSpec struct {
 	DataStoreRef *LocalObjectReference `json:"dataStoreRef,omitempty"`
 
 	// ServiceType for the control plane endpoint.
+	// If not specified, inherits from ButlerConfig.spec.controlPlaneExposure.mode.
+	// Only set this to override the platform-level setting for this specific cluster.
 	// +kubebuilder:validation:Enum=LoadBalancer;NodePort;ClusterIP
-	// +kubebuilder:default="LoadBalancer"
 	// +optional
 	ServiceType string `json:"serviceType,omitempty"`
 
