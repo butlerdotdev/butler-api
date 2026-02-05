@@ -70,6 +70,20 @@ spec:
                   This is a platform-level setting populated from ClusterBootstrap during
                   initial setup and inherited by all TenantClusters.
                 properties:
+                  controllerType:
+                    description: |-
+                      ControllerType specifies the ingress controller type for automatic TLS passthrough.
+                      Used when Mode is Ingress. Supported values:
+                      - "haproxy": Uses haproxy.org/ssl-passthrough annotation
+                      - "nginx": Uses nginx.ingress.kubernetes.io/ssl-passthrough annotation
+                      - "traefik": Creates IngressRouteTCP instead of standard Ingress
+                      - "generic": No automatic annotations, use custom annotations in Steward config
+                    enum:
+                    - haproxy
+                    - nginx
+                    - traefik
+                    - generic
+                    type: string
                   gatewayRef:
                     description: |-
                       GatewayRef references the Gateway resource when Mode is Gateway.
