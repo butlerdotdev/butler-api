@@ -56,6 +56,55 @@ const (
 	ClusterTopologyHA ClusterTopology = "ha"
 )
 
+// ControlPlaneExposureMode defines how tenant control planes are exposed.
+// +kubebuilder:validation:Enum=LoadBalancer;Ingress;Gateway
+type ControlPlaneExposureMode string
+
+const (
+	// ControlPlaneExposureModeLoadBalancer exposes each tenant API server via a dedicated
+	// LoadBalancer IP. This is the default mode, providing direct access with 1 IP per tenant.
+	// tcp-proxy is NOT required in this mode.
+	ControlPlaneExposureModeLoadBalancer ControlPlaneExposureMode = "LoadBalancer"
+
+	// ControlPlaneExposureModeIngress exposes tenant API servers through an Ingress controller
+	// with TLS passthrough. Multiple tenants share a single IP with SNI-based routing.
+	// tcp-proxy is auto-enabled to rewrite in-cluster kubernetes.default.svc endpoints.
+	ControlPlaneExposureModeIngress ControlPlaneExposureMode = "Ingress"
+
+	// ControlPlaneExposureModeGateway exposes tenant API servers through Gateway API TLSRoute.
+	// Multiple tenants share a single IP with SNI-based routing via L4/L7 Gateway.
+	// tcp-proxy is auto-enabled to rewrite in-cluster kubernetes.default.svc endpoints.
+	ControlPlaneExposureModeGateway ControlPlaneExposureMode = "Gateway"
+)
+
+// ControlPlaneExposureSpec configures how tenant control planes are exposed.
+// This is a platform-level setting inherited by all TenantClusters.
+type ControlPlaneExposureSpec struct {
+	// Mode determines how tenant API servers are exposed.
+	// LoadBalancer: 1 IP per tenant, direct access (default)
+	// Ingress: L7 proxy via Ingress controller with TLS passthrough, shared IP
+	// Gateway: L4/L7 via Gateway API TLSRoute, shared IP
+	// +kubebuilder:default="LoadBalancer"
+	// +optional
+	Mode ControlPlaneExposureMode `json:"mode,omitempty"`
+
+	// Hostname is the wildcard domain for tenant API servers.
+	// Required when Mode is Ingress or Gateway.
+	// Example: "*.k8s.platform.example.com"
+	// Tenant clusters get: "{cluster}.{namespace}.k8s.platform.example.com"
+	// +optional
+	Hostname string `json:"hostname,omitempty"`
+
+	// IngressClassName specifies the Ingress class when Mode is Ingress.
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty"`
+
+	// GatewayRef references the Gateway resource when Mode is Gateway.
+	// Format: "namespace/name"
+	// +optional
+	GatewayRef string `json:"gatewayRef,omitempty"`
+}
+
 // ClusterBootstrapSpec defines the desired state of ClusterBootstrap
 type ClusterBootstrapSpec struct {
 	// Provider is the infrastructure provider type (harvester, nutanix, proxmox)
@@ -82,6 +131,13 @@ type ClusterBootstrapSpec struct {
 	// Addons defines which addons to install
 	// +optional
 	Addons ClusterBootstrapAddonsSpec `json:"addons,omitempty"`
+
+	// ControlPlaneExposure configures how tenant control planes are exposed.
+	// This is a platform-level setting written to ButlerConfig after bootstrap
+	// and inherited by all TenantClusters.
+	// Defaults to LoadBalancer mode if not specified.
+	// +optional
+	ControlPlaneExposure *ControlPlaneExposureSpec `json:"controlPlaneExposure,omitempty"`
 
 	// Paused can be set to true to pause reconciliation
 	// +optional
@@ -659,6 +715,9 @@ type ClusterBootstrapMachineStatus struct {
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="Endpoint",type="string",JSONPath=".status.controlPlaneEndpoint"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:validation:XValidation:rule="!has(self.spec.controlPlaneExposure) || self.spec.controlPlaneExposure.mode != 'Ingress' || self.spec.controlPlaneExposure.hostname != ''",message="hostname is required when controlPlaneExposure.mode is Ingress"
+// +kubebuilder:validation:XValidation:rule="!has(self.spec.controlPlaneExposure) || self.spec.controlPlaneExposure.mode != 'Gateway' || self.spec.controlPlaneExposure.hostname != ''",message="hostname is required when controlPlaneExposure.mode is Gateway"
+// +kubebuilder:validation:XValidation:rule="!has(self.spec.controlPlaneExposure) || self.spec.controlPlaneExposure.mode != 'Gateway' || self.spec.controlPlaneExposure.gatewayRef != ''",message="gatewayRef is required when controlPlaneExposure.mode is Gateway"
 
 // ClusterBootstrap is the Schema for the clusterbootstraps API
 type ClusterBootstrap struct {
@@ -849,4 +908,43 @@ func (c *ClusterBootstrap) GetStorageReplicaCount() int32 {
 		return *c.Spec.Addons.Storage.ReplicaCount
 	}
 	return 3 // Default for HA
+}
+
+// GetControlPlaneExposureMode returns the control plane exposure mode, defaulting to LoadBalancer
+func (c *ClusterBootstrap) GetControlPlaneExposureMode() ControlPlaneExposureMode {
+	if c.Spec.ControlPlaneExposure == nil || c.Spec.ControlPlaneExposure.Mode == "" {
+		return ControlPlaneExposureModeLoadBalancer
+	}
+	return c.Spec.ControlPlaneExposure.Mode
+}
+
+// IsTCPProxyRequired returns true if tcp-proxy should be auto-enabled for tenants.
+// This is true when the exposure mode is Ingress or Gateway.
+func (c *ClusterBootstrap) IsTCPProxyRequired() bool {
+	mode := c.GetControlPlaneExposureMode()
+	return mode == ControlPlaneExposureModeIngress || mode == ControlPlaneExposureModeGateway
+}
+
+// GetControlPlaneExposureHostname returns the hostname pattern for tenant API servers
+func (c *ClusterBootstrap) GetControlPlaneExposureHostname() string {
+	if c.Spec.ControlPlaneExposure == nil {
+		return ""
+	}
+	return c.Spec.ControlPlaneExposure.Hostname
+}
+
+// GetControlPlaneExposureGatewayRef returns the Gateway reference for Gateway mode
+func (c *ClusterBootstrap) GetControlPlaneExposureGatewayRef() string {
+	if c.Spec.ControlPlaneExposure == nil {
+		return ""
+	}
+	return c.Spec.ControlPlaneExposure.GatewayRef
+}
+
+// GetControlPlaneExposureIngressClassName returns the Ingress class name for Ingress mode
+func (c *ClusterBootstrap) GetControlPlaneExposureIngressClassName() string {
+	if c.Spec.ControlPlaneExposure == nil {
+		return ""
+	}
+	return c.Spec.ControlPlaneExposure.IngressClassName
 }

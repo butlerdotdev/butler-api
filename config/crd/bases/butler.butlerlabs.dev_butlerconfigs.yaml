@@ -64,6 +64,41 @@ spec:
           spec:
             description: ButlerConfigSpec defines the desired state of ButlerConfig.
             properties:
+              controlPlaneExposure:
+                description: |-
+                  ControlPlaneExposure configures how tenant control planes are exposed.
+                  This is a platform-level setting populated from ClusterBootstrap during
+                  initial setup and inherited by all TenantClusters.
+                properties:
+                  gatewayRef:
+                    description: |-
+                      GatewayRef references the Gateway resource when Mode is Gateway.
+                      Format: "namespace/name"
+                    type: string
+                  hostname:
+                    description: |-
+                      Hostname is the wildcard domain for tenant API servers.
+                      Required when Mode is Ingress or Gateway.
+                      Example: "*.k8s.platform.example.com"
+                      Tenant clusters get: "{cluster}.{namespace}.k8s.platform.example.com"
+                    type: string
+                  ingressClassName:
+                    description: IngressClassName specifies the Ingress class when
+                      Mode is Ingress.
+                    type: string
+                  mode:
+                    default: LoadBalancer
+                    description: |-
+                      Mode determines how tenant API servers are exposed.
+                      LoadBalancer: 1 IP per tenant, direct access (default)
+                      Ingress: L7 proxy via Ingress controller with TLS passthrough, shared IP
+                      Gateway: L4/L7 via Gateway API TLSRoute, shared IP
+                    enum:
+                    - LoadBalancer
+                    - Ingress
+                    - Gateway
+                    type: string
+                type: object
               defaultAddonVersions:
                 description: |-
                   DefaultAddonVersions specifies the default versions for addons.
@@ -272,6 +307,14 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              controlPlaneExposureMode:
+                description: ControlPlaneExposureMode is the active control plane
+                  exposure mode.
+                enum:
+                - LoadBalancer
+                - Ingress
+                - Gateway
+                type: string
               gitProvider:
                 description: GitProvider shows the status of the configured Git provider.
                 properties:
@@ -295,6 +338,11 @@ spec:
                 description: ObservedGeneration is the last observed generation.
                 format: int64
                 type: integer
+              tcpProxyRequired:
+                description: |-
+                  TCPProxyRequired indicates if tcp-proxy is auto-enabled for tenants.
+                  True when ControlPlaneExposureMode is Ingress or Gateway.
+                type: boolean
               teamCount:
                 description: TeamCount is the current number of Teams.
                 format: int32
