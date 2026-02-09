@@ -261,3 +261,11 @@ func (c *ButlerConfig) GetControlPlaneExposureIngressClassName() string {
 	}
 	return c.Spec.ControlPlaneExposure.IngressClassName
 }
+
+// GetControlPlaneExposureControllerType returns the ingress controller type for automatic TLS passthrough.
+func (c *ButlerConfig) GetControlPlaneExposureControllerType() string {
+	if c.Spec.ControlPlaneExposure == nil {
+		return ""
+	}
+	return c.Spec.ControlPlaneExposure.ControllerType
+}
