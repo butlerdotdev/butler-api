@@ -68,8 +68,9 @@ type TenantClusterSpec struct {
 
 	// ProviderConfigRef references the ProviderConfig for infrastructure.
 	// If not specified, defaults are used (Team's or platform's).
+	// Namespace defaults to butler-system if not specified.
 	// +optional
-	ProviderConfigRef *LocalObjectReference `json:"providerConfigRef,omitempty"`
+	ProviderConfigRef *ProviderReference `json:"providerConfigRef,omitempty"`
 
 	// ControlPlane configures the Steward-hosted control plane.
 	// +optional
@@ -286,8 +287,15 @@ type NetworkingSpec struct {
 	ServiceCIDR string `json:"serviceCIDR,omitempty"`
 
 	// LoadBalancerPool defines the IP pool for LoadBalancer services.
+	// When IPAM is active, this is populated automatically from IPAllocation.
 	// +optional
 	LoadBalancerPool *IPPool `json:"loadBalancerPool,omitempty"`
+
+	// LBPoolSize overrides the default load balancer pool size from the provider.
+	// Only used when the provider has network.mode=ipam.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	LBPoolSize *int32 `json:"lbPoolSize,omitempty"`
 }
 
 // IPPool defines a range of IP addresses.
@@ -537,6 +545,14 @@ type TenantClusterStatus struct {
 	// WorkerNodesDesired is the desired count of worker nodes
 	// +optional
 	WorkerNodesDesired int32 `json:"workerNodesDesired,omitempty"`
+
+	// IPAllocationRef references the node IP allocation from IPAM.
+	// +optional
+	IPAllocationRef *LocalObjectReference `json:"ipAllocationRef,omitempty"`
+
+	// LBAllocationRef references the load balancer IP allocation from IPAM.
+	// +optional
+	LBAllocationRef *LocalObjectReference `json:"lbAllocationRef,omitempty"`
 }
 
 // ObservedClusterState captures the current state of the cluster.
@@ -600,6 +616,12 @@ const (
 
 	// TenantClusterConditionReady indicates the cluster is fully ready.
 	TenantClusterConditionReady = "Ready"
+
+	// TenantClusterConditionNetworkReady indicates IP allocation is complete.
+	TenantClusterConditionNetworkReady = "NetworkReady"
+
+	// TenantClusterConditionProviderAccessGranted indicates scope check passed.
+	TenantClusterConditionProviderAccessGranted = "ProviderAccessGranted"
 )
 
 // +kubebuilder:object:root=true

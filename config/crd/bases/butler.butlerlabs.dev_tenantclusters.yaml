@@ -323,9 +323,17 @@ spec:
               networking:
                 description: Networking configures cluster networking.
                 properties:
+                  lbPoolSize:
+                    description: |-
+                      LBPoolSize overrides the default load balancer pool size from the provider.
+                      Only used when the provider has network.mode=ipam.
+                    format: int32
+                    minimum: 1
+                    type: integer
                   loadBalancerPool:
-                    description: LoadBalancerPool defines the IP pool for LoadBalancer
-                      services.
+                    description: |-
+                      LoadBalancerPool defines the IP pool for LoadBalancer services.
+                      When IPAM is active, this is populated automatically from IPAllocation.
                     properties:
                       end:
                         description: End is the last IP in the pool.
@@ -350,10 +358,16 @@ spec:
                 description: |-
                   ProviderConfigRef references the ProviderConfig for infrastructure.
                   If not specified, defaults are used (Team's or platform's).
+                  Namespace defaults to butler-system if not specified.
                 properties:
                   name:
-                    description: Name is the name of the resource.
+                    description: Name is the name of the ProviderConfig resource.
                     minLength: 1
+                    type: string
+                  namespace:
+                    description: |-
+                      Namespace is the namespace of the ProviderConfig resource.
+                      If not specified, the namespace of the referencing resource is used.
                     type: string
                 required:
                 - name
@@ -519,6 +533,17 @@ spec:
               controlPlaneEndpoint:
                 description: ControlPlaneEndpoint is the API server endpoint.
                 type: string
+              ipAllocationRef:
+                description: IPAllocationRef references the node IP allocation from
+                  IPAM.
+                properties:
+                  name:
+                    description: Name is the name of the resource.
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                type: object
               kubeconfigSecretRef:
                 description: KubeconfigSecretRef references the Secret containing
                   the kubeconfig.
@@ -534,6 +559,17 @@ spec:
                 description: LastTransitionTime is when the phase last changed.
                 format: date-time
                 type: string
+              lbAllocationRef:
+                description: LBAllocationRef references the load balancer IP allocation
+                  from IPAM.
+                properties:
+                  name:
+                    description: Name is the name of the resource.
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                type: object
               observedGeneration:
                 description: ObservedGeneration is the last observed generation.
                 format: int64
