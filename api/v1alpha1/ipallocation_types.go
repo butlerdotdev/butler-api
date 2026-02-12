@@ -66,9 +66,29 @@ type IPAllocationSpec struct {
 
 	// Count is the number of IPs to allocate.
 	// If not specified, defaults from the NetworkPool are used.
+	// Ignored when PinnedRange is set.
 	// +optional
 	// +kubebuilder:validation:Minimum=1
 	Count *int32 `json:"count,omitempty"`
+
+	// PinnedRange requests a specific IP range instead of automatic allocation.
+	// Used for migrating existing clusters to IPAM or reserving well-known addresses.
+	// The allocator validates the range is within the pool and not already allocated.
+	// +optional
+	PinnedRange *PinnedIPRange `json:"pinnedRange,omitempty"`
+}
+
+// PinnedIPRange specifies an exact IP range to allocate.
+type PinnedIPRange struct {
+	// StartAddress is the first IP of the pinned range.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^(\d{1,3}\.){3}\d{1,3}$`
+	StartAddress string `json:"startAddress"`
+
+	// EndAddress is the last IP of the pinned range.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^(\d{1,3}\.){3}\d{1,3}$`
+	EndAddress string `json:"endAddress"`
 }
 
 // IPAllocationStatus defines the observed state of IPAllocation.
