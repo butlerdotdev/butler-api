@@ -40,7 +40,7 @@ const (
 )
 
 // OSType defines the operating system for worker nodes.
-// +kubebuilder:validation:Enum=rocky;flatcar
+// +kubebuilder:validation:Enum=rocky;flatcar;talos
 type OSType string
 
 const (
@@ -49,6 +49,9 @@ const (
 
 	// OSTypeFlatcar is Flatcar Container Linux.
 	OSTypeFlatcar OSType = "flatcar"
+
+	// OSTypeTalos is Talos Linux (immutable OS).
+	OSTypeTalos OSType = "talos"
 )
 
 // TenantClusterSpec defines the desired state of TenantCluster.
@@ -181,6 +184,29 @@ type OSSpec struct {
 	// Overrides Type and Version if specified.
 	// +optional
 	ImageRef string `json:"imageRef,omitempty"`
+
+	// Talos provides Talos-specific worker node configuration.
+	// Required when type is "talos".
+	// +optional
+	Talos *TalosConfig `json:"talos,omitempty"`
+}
+
+// TalosConfig provides Talos-specific worker node configuration.
+type TalosConfig struct {
+	// InstallDisk is the disk where Talos will be installed.
+	// +kubebuilder:default="/dev/vda"
+	// +optional
+	InstallDisk string `json:"installDisk,omitempty"`
+
+	// InstallerImage is the Talos installer image
+	// (e.g., factory.talos.dev/installer/<schematic>:v1.9.3).
+	// +optional
+	InstallerImage string `json:"installerImage,omitempty"`
+
+	// Version is the Talos version.
+	// +kubebuilder:default="v1.9.3"
+	// +optional
+	Version string `json:"version,omitempty"`
 }
 
 // InfrastructureOverride allows overriding provider-specific settings per-cluster.

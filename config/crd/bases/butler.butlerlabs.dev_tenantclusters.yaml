@@ -407,12 +407,33 @@ spec:
                               ImageRef references a specific image to use.
                               Overrides Type and Version if specified.
                             type: string
+                          talos:
+                            description: |-
+                              Talos provides Talos-specific worker node configuration.
+                              Required when type is "talos".
+                            properties:
+                              installDisk:
+                                default: /dev/vda
+                                description: InstallDisk is the disk where Talos will
+                                  be installed.
+                                type: string
+                              installerImage:
+                                description: |-
+                                  InstallerImage is the Talos installer image
+                                  (e.g., factory.talos.dev/installer/<schematic>:v1.9.3).
+                                type: string
+                              version:
+                                default: v1.9.3
+                                description: Version is the Talos version.
+                                type: string
+                            type: object
                           type:
                             default: rocky
                             description: Type is the OS type.
                             enum:
                             - rocky
                             - flatcar
+                            - talos
                             type: string
                           version:
                             default: "9.5"
