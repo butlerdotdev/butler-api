@@ -21,7 +21,7 @@ import (
 )
 
 // ProviderType defines the supported infrastructure providers.
-// +kubebuilder:validation:Enum=harvester;nutanix;proxmox
+// +kubebuilder:validation:Enum=harvester;nutanix;proxmox;azure;aws;gcp
 type ProviderType string
 
 const (
@@ -33,6 +33,15 @@ const (
 
 	// ProviderTypeProxmox is the Proxmox VE provider.
 	ProviderTypeProxmox ProviderType = "proxmox"
+
+	// ProviderTypeAzure is the Microsoft Azure provider.
+	ProviderTypeAzure ProviderType = "azure"
+
+	// ProviderTypeAWS is the Amazon Web Services provider.
+	ProviderTypeAWS ProviderType = "aws"
+
+	// ProviderTypeGCP is the Google Cloud Platform provider.
+	ProviderTypeGCP ProviderType = "gcp"
 )
 
 // ProviderConfigSpec defines the desired state of ProviderConfig.
@@ -63,6 +72,35 @@ type ProviderConfigSpec struct {
 	// Required when provider is "proxmox".
 	// +optional
 	Proxmox *ProxmoxProviderConfig `json:"proxmox,omitempty"`
+
+	// Azure contains Azure-specific configuration.
+	// Required when provider is "azure".
+	// +optional
+	Azure *AzureProviderConfig `json:"azure,omitempty"`
+
+	// AWS contains AWS-specific configuration.
+	// Required when provider is "aws".
+	// +optional
+	AWS *AWSProviderConfig `json:"aws,omitempty"`
+
+	// GCP contains GCP-specific configuration.
+	// Required when provider is "gcp".
+	// +optional
+	GCP *GCPProviderConfig `json:"gcp,omitempty"`
+
+	// Scope defines the visibility of this ProviderConfig.
+	// Platform-scoped providers are available to all teams.
+	// Team-scoped providers are restricted to a specific team.
+	// +optional
+	Scope *ProviderConfigScope `json:"scope,omitempty"`
+
+	// Network configures IPAM and network settings for this provider.
+	// +optional
+	Network *ProviderNetworkConfig `json:"network,omitempty"`
+
+	// Limits defines resource limits enforced per-team on this provider.
+	// +optional
+	Limits *ProviderLimits `json:"limits,omitempty"`
 }
 
 // HarvesterProviderConfig contains Harvester-specific configuration.
@@ -168,6 +206,187 @@ type VMIDRange struct {
 	End int32 `json:"end"`
 }
 
+// AzureProviderConfig contains Azure-specific configuration.
+type AzureProviderConfig struct {
+	// SubscriptionID is the Azure subscription ID.
+	// +kubebuilder:validation:Required
+	SubscriptionID string `json:"subscriptionID"`
+
+	// ResourceGroup is the Azure resource group.
+	// +kubebuilder:validation:Required
+	ResourceGroup string `json:"resourceGroup"`
+
+	// Location is the Azure region.
+	// +optional
+	Location string `json:"location,omitempty"`
+
+	// VNetName is the Azure Virtual Network name.
+	// +optional
+	VNetName string `json:"vnetName,omitempty"`
+
+	// SubnetName is the subnet within the VNet.
+	// +optional
+	SubnetName string `json:"subnetName,omitempty"`
+}
+
+// AWSProviderConfig contains AWS-specific configuration.
+type AWSProviderConfig struct {
+	// Region is the AWS region.
+	// +kubebuilder:validation:Required
+	Region string `json:"region"`
+
+	// VPCID is the VPC identifier.
+	// +optional
+	VPCID string `json:"vpcID,omitempty"`
+
+	// SubnetIDs are the subnet identifiers for VM placement.
+	// +optional
+	SubnetIDs []string `json:"subnetIDs,omitempty"`
+
+	// SecurityGroupIDs are the security group identifiers.
+	// +optional
+	SecurityGroupIDs []string `json:"securityGroupIDs,omitempty"`
+}
+
+// GCPProviderConfig contains GCP-specific configuration.
+type GCPProviderConfig struct {
+	// ProjectID is the GCP project identifier.
+	// +kubebuilder:validation:Required
+	ProjectID string `json:"projectID"`
+
+	// Region is the GCP region.
+	// +kubebuilder:validation:Required
+	Region string `json:"region"`
+
+	// Network is the VPC network name.
+	// +optional
+	Network string `json:"network,omitempty"`
+
+	// Subnetwork is the subnetwork name.
+	// +optional
+	Subnetwork string `json:"subnetwork,omitempty"`
+}
+
+// ProviderConfigScopeType defines the visibility scope.
+// +kubebuilder:validation:Enum=platform;team
+type ProviderConfigScopeType string
+
+const (
+	// ProviderConfigScopePlatform means the provider is available to all teams.
+	ProviderConfigScopePlatform ProviderConfigScopeType = "platform"
+
+	// ProviderConfigScopeTeam means the provider is restricted to a specific team.
+	ProviderConfigScopeTeam ProviderConfigScopeType = "team"
+)
+
+// ProviderConfigScope defines the visibility of a ProviderConfig.
+type ProviderConfigScope struct {
+	// Type is the scope type.
+	// +kubebuilder:default="platform"
+	// +optional
+	Type ProviderConfigScopeType `json:"type,omitempty"`
+
+	// TeamRef references the Team when type is "team".
+	// Required when type is "team".
+	// +optional
+	TeamRef *LocalObjectReference `json:"teamRef,omitempty"`
+}
+
+// ProviderNetworkConfig configures IPAM and network settings.
+type ProviderNetworkConfig struct {
+	// Mode determines how IP addresses are managed.
+	// "ipam" uses NetworkPool-based automated allocation.
+	// "cloud" relies on the cloud provider's native networking.
+	// +kubebuilder:validation:Enum=ipam;cloud
+	// +kubebuilder:default="cloud"
+	// +optional
+	Mode string `json:"mode,omitempty"`
+
+	// PoolRefs references NetworkPools for IPAM allocation, ordered by priority.
+	// Required when mode is "ipam". Allocator tries first pool, falls back to next if exhausted.
+	// +optional
+	PoolRefs []PoolReference `json:"poolRefs,omitempty"`
+
+	// Subnet is the network name for VM placement (e.g., "VM Network - VLAN 40").
+	// +optional
+	Subnet string `json:"subnet,omitempty"`
+
+	// Gateway is the network gateway address.
+	// +optional
+	Gateway string `json:"gateway,omitempty"`
+
+	// DNSServers are the DNS server addresses.
+	// +optional
+	DNSServers []string `json:"dnsServers,omitempty"`
+
+	// LoadBalancer configures load balancer IP allocation defaults.
+	// +optional
+	LoadBalancer *ProviderLBConfig `json:"loadBalancer,omitempty"`
+
+	// QuotaPerTenant defines per-tenant network resource quotas.
+	// +optional
+	QuotaPerTenant *NetworkQuota `json:"quotaPerTenant,omitempty"`
+}
+
+// PoolReference references a NetworkPool with a priority.
+type PoolReference struct {
+	// Name is the name of the NetworkPool.
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+
+	// Priority determines allocation order (lower = higher priority).
+	// Pools at the same priority are tried in list order.
+	// +kubebuilder:default=0
+	// +optional
+	Priority *int32 `json:"priority,omitempty"`
+}
+
+// ProviderLBConfig configures load balancer defaults.
+type ProviderLBConfig struct {
+	// DefaultPoolSize is the default number of LB IPs per tenant.
+	// +kubebuilder:default=8
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	DefaultPoolSize *int32 `json:"defaultPoolSize,omitempty"`
+}
+
+// NetworkQuota defines per-tenant network resource quotas.
+type NetworkQuota struct {
+	// MaxNodeIPs limits the number of node IPs per tenant.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	MaxNodeIPs *int32 `json:"maxNodeIPs,omitempty"`
+
+	// MaxLoadBalancerIPs limits the number of LB IPs per tenant.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	MaxLoadBalancerIPs *int32 `json:"maxLoadBalancerIPs,omitempty"`
+}
+
+// ProviderLimits defines per-team resource limits on a provider.
+type ProviderLimits struct {
+	// MaxClustersPerTeam limits the number of clusters per team.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	MaxClustersPerTeam *int32 `json:"maxClustersPerTeam,omitempty"`
+
+	// MaxNodesPerTeam limits the total nodes per team.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	MaxNodesPerTeam *int32 `json:"maxNodesPerTeam,omitempty"`
+}
+
+// ProviderCapacity reports the available capacity of a provider.
+type ProviderCapacity struct {
+	// AvailableIPs is the number of available IPs across all pools.
+	// +optional
+	AvailableIPs int32 `json:"availableIPs,omitempty"`
+
+	// EstimatedTenants is the estimated number of tenants that can be provisioned.
+	// +optional
+	EstimatedTenants int32 `json:"estimatedTenants,omitempty"`
+}
+
 // ProviderConfigStatus defines the observed state of ProviderConfig.
 type ProviderConfigStatus struct {
 	// Conditions represent the latest available observations of the ProviderConfig's state.
@@ -187,12 +406,26 @@ type ProviderConfigStatus struct {
 	// ProviderVersion is the detected version of the infrastructure provider.
 	// +optional
 	ProviderVersion string `json:"providerVersion,omitempty"`
+
+	// Ready indicates overall readiness of the provider.
+	// +optional
+	Ready bool `json:"ready,omitempty"`
+
+	// LastProbeTime is the timestamp of the last health probe.
+	// +optional
+	LastProbeTime *metav1.Time `json:"lastProbeTime,omitempty"`
+
+	// Capacity reports the available capacity of this provider.
+	// +optional
+	Capacity *ProviderCapacity `json:"capacity,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=pc
 // +kubebuilder:printcolumn:name="Provider",type="string",JSONPath=".spec.provider",description="Infrastructure provider type"
+// +kubebuilder:printcolumn:name="Scope",type="string",JSONPath=".spec.scope.type",description="Visibility scope"
+// +kubebuilder:printcolumn:name="Ready",type="boolean",JSONPath=".status.ready",description="Provider ready"
 // +kubebuilder:printcolumn:name="Validated",type="boolean",JSONPath=".status.validated",description="Configuration validated"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 

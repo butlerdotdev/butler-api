@@ -218,6 +218,12 @@ const (
 
 	// LabelSourceName indicates the source name for generated resources.
 	LabelSourceName = "butler.butlerlabs.dev/source-name"
+
+	// LabelNetworkPool identifies the NetworkPool associated with a resource.
+	LabelNetworkPool = "butler.butlerlabs.dev/network-pool"
+
+	// LabelProviderConfig identifies the ProviderConfig associated with a resource.
+	LabelProviderConfig = "butler.butlerlabs.dev/provider-config"
 )
 
 // Butler-specific annotations.
@@ -242,6 +248,15 @@ const (
 
 	// FinalizerUser is the finalizer for User resources.
 	FinalizerUser = "butler.butlerlabs.dev/user"
+
+	// FinalizerNetworkPool is the finalizer for NetworkPool resources.
+	FinalizerNetworkPool = "butler.butlerlabs.dev/networkpool"
+
+	// FinalizerIPAllocation is the finalizer for IPAllocation resources.
+	FinalizerIPAllocation = "butler.butlerlabs.dev/ipallocation"
+
+	// FinalizerProviderConfig is the finalizer for ProviderConfig resources.
+	FinalizerProviderConfig = "butler.butlerlabs.dev/providerconfig"
 )
 
 // Condition types following Kubernetes API conventions.
@@ -303,4 +318,25 @@ const (
 
 	// ReasonQuotaExceeded indicates a resource quota was exceeded.
 	ReasonQuotaExceeded = "QuotaExceeded"
+
+	// ReasonPoolExhausted indicates a NetworkPool has no available IPs.
+	ReasonPoolExhausted = "PoolExhausted"
+
+	// ReasonAllocationFailed indicates an IP allocation failed.
+	ReasonAllocationFailed = "AllocationFailed"
+
+	// ReasonProviderAccessDenied indicates the team does not have access to the provider.
+	ReasonProviderAccessDenied = "ProviderAccessDenied"
+
+	// ReasonNetworkNotReady indicates the network is not ready.
+	ReasonNetworkNotReady = "NetworkNotReady"
+
+	// ReasonCredentialsInvalid indicates provider credentials are invalid.
+	ReasonCredentialsInvalid = "CredentialsInvalid"
+
+	// ReasonNetworkReachable indicates the network is reachable.
+	ReasonNetworkReachable = "NetworkReachable"
+
+	// ReasonPoolAvailable indicates the network pool has capacity.
+	ReasonPoolAvailable = "PoolAvailable"
 )
