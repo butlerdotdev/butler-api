@@ -98,6 +98,57 @@ type TenantClusterSpec struct {
 	// These take precedence over ProviderConfig defaults.
 	// +optional
 	InfrastructureOverride *InfrastructureOverride `json:"infrastructureOverride,omitempty"`
+
+	// Workspaces configures cloud development environments on this cluster.
+	// When enabled, users can create Workspace resources that provision pods
+	// with SSH access in the tenant cluster's "workspaces" namespace.
+	// +optional
+	Workspaces *WorkspacesConfig `json:"workspaces,omitempty"`
+}
+
+// WorkspacesConfig configures the workspace feature for a tenant cluster.
+type WorkspacesConfig struct {
+	// Enabled allows workspace creation on this cluster.
+	// +kubebuilder:default=false
+	Enabled bool `json:"enabled"`
+
+	// DefaultImage is the default workspace image if user doesn't specify one.
+	// +kubebuilder:default="ghcr.io/butlerdotdev/workspace-base:latest"
+	// +optional
+	DefaultImage string `json:"defaultImage,omitempty"`
+
+	// MaxWorkspaces per cluster. 0 means unlimited.
+	// +kubebuilder:default=20
+	// +optional
+	MaxWorkspaces *int32 `json:"maxWorkspaces,omitempty"`
+
+	// ResourceQuota for the workspaces namespace in the tenant cluster.
+	// +optional
+	ResourceQuota *WorkspaceResourceQuota `json:"resourceQuota,omitempty"`
+
+	// AutoDeleteAfter deletes stopped workspaces after this duration.
+	// Prevents PVC sprawl. 0 means never auto-delete.
+	// +kubebuilder:default="720h"
+	// +optional
+	AutoDeleteAfter *metav1.Duration `json:"autoDeleteAfter,omitempty"`
+}
+
+// WorkspaceResourceQuota defines resource limits for the workspaces namespace.
+type WorkspaceResourceQuota struct {
+	// MaxCPU total across all workspaces in this cluster.
+	// +kubebuilder:default="16"
+	// +optional
+	MaxCPU string `json:"maxCPU,omitempty"`
+
+	// MaxMemory total across all workspaces in this cluster.
+	// +kubebuilder:default="32Gi"
+	// +optional
+	MaxMemory string `json:"maxMemory,omitempty"`
+
+	// MaxStorage total across all workspace PVCs in this cluster.
+	// +kubebuilder:default="500Gi"
+	// +optional
+	MaxStorage string `json:"maxStorage,omitempty"`
 }
 
 // ControlPlaneSpec configures the Steward-hosted control plane.

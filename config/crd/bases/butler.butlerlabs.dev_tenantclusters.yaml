@@ -463,6 +463,54 @@ spec:
                 required:
                 - replicas
                 type: object
+              workspaces:
+                description: |-
+                  Workspaces configures cloud development environments on this cluster.
+                  When enabled, users can create Workspace resources that provision pods
+                  with SSH access in the tenant cluster's "workspaces" namespace.
+                properties:
+                  autoDeleteAfter:
+                    default: 720h
+                    description: |-
+                      AutoDeleteAfter deletes stopped workspaces after this duration.
+                      Prevents PVC sprawl. 0 means never auto-delete.
+                    type: string
+                  defaultImage:
+                    default: ghcr.io/butlerdotdev/workspace-base:latest
+                    description: DefaultImage is the default workspace image if user
+                      doesn't specify one.
+                    type: string
+                  enabled:
+                    default: false
+                    description: Enabled allows workspace creation on this cluster.
+                    type: boolean
+                  maxWorkspaces:
+                    default: 20
+                    description: MaxWorkspaces per cluster. 0 means unlimited.
+                    format: int32
+                    type: integer
+                  resourceQuota:
+                    description: ResourceQuota for the workspaces namespace in the
+                      tenant cluster.
+                    properties:
+                      maxCPU:
+                        default: "16"
+                        description: MaxCPU total across all workspaces in this cluster.
+                        type: string
+                      maxMemory:
+                        default: 32Gi
+                        description: MaxMemory total across all workspaces in this
+                          cluster.
+                        type: string
+                      maxStorage:
+                        default: 500Gi
+                        description: MaxStorage total across all workspace PVCs in
+                          this cluster.
+                        type: string
+                    type: object
+                required:
+                - enabled
+                type: object
             required:
             - kubernetesVersion
             - workers
