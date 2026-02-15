@@ -352,7 +352,7 @@ type ProxmoxOverride struct {
 
 	// TemplateID is the VM template ID.
 	// +optional
-	TemplateID int `json:"templateID,omitempty"`
+	TemplateID string `json:"templateID,omitempty"`
 }
 
 // GCPOverride contains GCP-specific settings that can be overridden per-cluster.
