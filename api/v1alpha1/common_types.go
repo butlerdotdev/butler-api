@@ -227,6 +227,9 @@ const (
 
 	// LabelWorkspaceOwner identifies the owner of a workspace (hashed email).
 	LabelWorkspaceOwner = "butler.butlerlabs.dev/workspace-owner"
+
+	// LabelAllocationType identifies the IP allocation type (loadbalancer, nodes).
+	LabelAllocationType = "butler.butlerlabs.dev/allocation-type"
 )
 
 // Butler-specific annotations.

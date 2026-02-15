@@ -221,10 +221,34 @@ spec:
                     description: LoadBalancer configures load balancer IP allocation
                       defaults.
                     properties:
+                      allocationMode:
+                        default: static
+                        description: |-
+                          AllocationMode controls how LB IPs are allocated to tenants.
+                          "static" pre-allocates a fixed block (DefaultPoolSize IPs).
+                          "elastic" starts small and grows/shrinks based on usage.
+                        enum:
+                        - static
+                        - elastic
+                        type: string
                       defaultPoolSize:
                         default: 8
                         description: DefaultPoolSize is the default number of LB IPs
-                          per tenant.
+                          per tenant in static mode.
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      growthIncrement:
+                        default: 2
+                        description: GrowthIncrement is the number of IPs added per
+                          expansion in elastic mode.
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      initialPoolSize:
+                        default: 2
+                        description: InitialPoolSize is the number of LB IPs initially
+                          allocated in elastic mode.
                         format: int32
                         minimum: 1
                         type: integer
