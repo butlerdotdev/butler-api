@@ -243,7 +243,7 @@ type ProxmoxOverride struct {
 
 	// TemplateID is the VM template ID.
 	// +optional
-	TemplateID int `json:"templateID,omitempty"`
+	TemplateID string `json:"templateID,omitempty"`
 }
 
 // NetworkingSpec configures cluster networking.

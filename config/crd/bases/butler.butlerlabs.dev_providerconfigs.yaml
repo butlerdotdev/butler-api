@@ -185,14 +185,23 @@ spec:
                       TemplateID is the location of the ISO to use for VM creation
                       i.e. local:iso/ubuntu-22.04.iso
                     type: string
-                  vmidEnd:
-                    description: VMIDEnd is the ending VM ID for new VMs.
-                    format: int32
-                    type: integer
-                  vmidStart:
-                    description: VMIDStart is the starting VM ID for new VMs.
-                    format: int32
-                    type: integer
+                  vmidRange:
+                    description: VMIDRange defines the range of VM IDs to use.
+                    properties:
+                      end:
+                        description: End is the last VM ID in the range.
+                        format: int32
+                        minimum: 100
+                        type: integer
+                      start:
+                        description: Start is the first VM ID in the range.
+                        format: int32
+                        minimum: 100
+                        type: integer
+                    required:
+                    - end
+                    - start
+                    type: object
                 required:
                 - endpoint
                 - nodes
