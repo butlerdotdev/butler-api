@@ -343,11 +343,31 @@ type PoolReference struct {
 
 // ProviderLBConfig configures load balancer defaults.
 type ProviderLBConfig struct {
-	// DefaultPoolSize is the default number of LB IPs per tenant.
+	// DefaultPoolSize is the default number of LB IPs per tenant in static mode.
 	// +kubebuilder:default=8
 	// +kubebuilder:validation:Minimum=1
 	// +optional
 	DefaultPoolSize *int32 `json:"defaultPoolSize,omitempty"`
+
+	// AllocationMode controls how LB IPs are allocated to tenants.
+	// "static" pre-allocates a fixed block (DefaultPoolSize IPs).
+	// "elastic" starts small and grows/shrinks based on usage.
+	// +kubebuilder:validation:Enum=static;elastic
+	// +kubebuilder:default="static"
+	// +optional
+	AllocationMode string `json:"allocationMode,omitempty"`
+
+	// InitialPoolSize is the number of LB IPs initially allocated in elastic mode.
+	// +kubebuilder:default=2
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	InitialPoolSize *int32 `json:"initialPoolSize,omitempty"`
+
+	// GrowthIncrement is the number of IPs added per expansion in elastic mode.
+	// +kubebuilder:default=2
+	// +kubebuilder:validation:Minimum=1
+	// +optional
+	GrowthIncrement *int32 `json:"growthIncrement,omitempty"`
 }
 
 // NetworkQuota defines per-tenant network resource quotas.
