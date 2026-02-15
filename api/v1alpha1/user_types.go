@@ -80,6 +80,34 @@ type UserSpec struct {
 	// +optional
 	// +kubebuilder:default=false
 	IsPlatformAdmin bool `json:"isPlatformAdmin,omitempty"`
+
+	// SSHKeys are the user's saved SSH public keys for workspace access.
+	// Public keys are not sensitive — storing them in spec avoids Secret sprawl
+	// and makes them queryable. Matches how GitHub stores public keys.
+	// +optional
+	SSHKeys []SSHKeyEntry `json:"sshKeys,omitempty"`
+}
+
+// SSHKeyEntry represents a named SSH public key in a user's profile.
+type SSHKeyEntry struct {
+	// Name is a user-friendly label for this key (e.g., "macbook-pro", "work-laptop").
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=63
+	Name string `json:"name"`
+
+	// PublicKey is the SSH public key (e.g., "ssh-ed25519 AAAA... user@host").
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	PublicKey string `json:"publicKey"`
+
+	// Fingerprint is the SHA256 fingerprint, computed by the server on upload.
+	// +optional
+	Fingerprint string `json:"fingerprint,omitempty"`
+
+	// AddedAt is when this key was added.
+	// +optional
+	AddedAt *metav1.Time `json:"addedAt,omitempty"`
 }
 
 // UserStatus defines the observed state of User.

@@ -224,6 +224,9 @@ const (
 
 	// LabelProviderConfig identifies the ProviderConfig associated with a resource.
 	LabelProviderConfig = "butler.butlerlabs.dev/provider-config"
+
+	// LabelWorkspaceOwner identifies the owner of a workspace (hashed email).
+	LabelWorkspaceOwner = "butler.butlerlabs.dev/workspace-owner"
 )
 
 // Butler-specific annotations.
@@ -233,6 +236,12 @@ const (
 
 	// AnnotationCreatedBy indicates who created the resource.
 	AnnotationCreatedBy = "butler.butlerlabs.dev/created-by"
+
+	// AnnotationConnect signals the controller to create/tear down the SSH service.
+	AnnotationConnect = "butler.butlerlabs.dev/connect"
+
+	// AnnotationConnectTime records when the SSH service was created.
+	AnnotationConnectTime = "butler.butlerlabs.dev/connect-time"
 )
 
 // Finalizers.
@@ -257,6 +266,9 @@ const (
 
 	// FinalizerProviderConfig is the finalizer for ProviderConfig resources.
 	FinalizerProviderConfig = "butler.butlerlabs.dev/providerconfig"
+
+	// FinalizerWorkspace is the finalizer for Workspace resources.
+	FinalizerWorkspace = "butler.butlerlabs.dev/workspace"
 )
 
 // Condition types following Kubernetes API conventions.
