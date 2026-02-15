@@ -47,3 +47,5 @@ temp/
 # Butler specific
 *.kubeconfig
 .butler/
+secrets/
+.secrets/

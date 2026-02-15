@@ -86,8 +86,14 @@ type WorkspaceTemplateBody struct {
 	Image string `json:"image"`
 
 	// Repository to clone into the workspace.
+	// Deprecated: Use Repositories for multi-repo support.
 	// +optional
 	Repository *WorkspaceRepository `json:"repository,omitempty"`
+
+	// Repositories is a list of Git repositories to clone into the workspace.
+	// Each repository is cloned as a sibling directory under /workspace/{repo-name}/.
+	// +optional
+	Repositories []WorkspaceRepository `json:"repositories,omitempty"`
 
 	// EnvFrom workload to copy environment variables from.
 	// +optional

@@ -84,8 +84,16 @@ type WorkspaceSpec struct {
 	Image string `json:"image"`
 
 	// Repository to clone into the workspace on creation.
+	// Deprecated: Use Repositories for multi-repo support.
 	// +optional
 	Repository *WorkspaceRepository `json:"repository,omitempty"`
+
+	// Repositories is a list of Git repositories to clone into the workspace.
+	// Each repository is cloned as a sibling directory under /workspace/{repo-name}/.
+	// When multiple repositories are specified, a VS Code .code-workspace file
+	// is generated automatically.
+	// +optional
+	Repositories []WorkspaceRepository `json:"repositories,omitempty"`
 
 	// EnvFrom copies environment variables from an existing workload
 	// running in the tenant cluster.
@@ -115,7 +123,7 @@ type WorkspaceSpec struct {
 	AutoStopAfter *metav1.Duration `json:"autoStopAfter,omitempty"`
 
 	// StorageSize for the workspace PVC.
-	// +kubebuilder:default="50Gi"
+	// +kubebuilder:default="10Gi"
 	// +optional
 	StorageSize *resource.Quantity `json:"storageSize,omitempty"`
 
@@ -123,6 +131,29 @@ type WorkspaceSpec struct {
 	// from the owner's User profile (spec.sshKeys).
 	// +optional
 	SSHPublicKeys []string `json:"sshPublicKeys,omitempty"`
+
+	// EditorConfig holds per-editor configuration (e.g. Neovim config repo).
+	// +optional
+	EditorConfig *EditorConfig `json:"editorConfig,omitempty"`
+}
+
+// EditorConfig configures editor-specific settings for the workspace.
+type EditorConfig struct {
+	// NeovimConfigRepo is a Git URL for a Neovim configuration.
+	// Cloned to ~/.config/nvim on first workspace creation.
+	// +optional
+	NeovimConfigRepo string `json:"neovimConfigRepo,omitempty"`
+
+	// NeovimInitLua is inline init.lua content written to ~/.config/nvim/init.lua.
+	// Use this when the config is not in a git repo. Ignored if NeovimConfigRepo is set.
+	// +optional
+	NeovimInitLua string `json:"neovimInitLua,omitempty"`
+
+	// NeovimConfigArchive is a base64-encoded tar.gz archive of a Neovim config directory.
+	// Extracted to ~/.config/nvim on workspace creation. Supports multi-file configs
+	// (init.lua + lua/ subdirectories). Ignored if NeovimConfigRepo is set.
+	// +optional
+	NeovimConfigArchive string `json:"neovimConfigArchive,omitempty"`
 }
 
 // WorkspaceRepository configures a Git repository to clone into the workspace.
@@ -130,6 +161,12 @@ type WorkspaceRepository struct {
 	// URL is the Git repository URL.
 	// +kubebuilder:validation:Required
 	URL string `json:"url"`
+
+	// Name is the directory name under /workspace/ to clone into.
+	// If empty, derived from the repository URL (e.g., "butler-api" from
+	// "https://github.com/butlerdotdev/butler-api").
+	// +optional
+	Name string `json:"name,omitempty"`
 
 	// Branch to checkout.
 	// +kubebuilder:default="main"

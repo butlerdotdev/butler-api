@@ -103,6 +103,27 @@ spec:
                 required:
                 - url
                 type: object
+              editorConfig:
+                description: EditorConfig holds per-editor configuration (e.g. Neovim
+                  config repo).
+                properties:
+                  neovimConfigArchive:
+                    description: |-
+                      NeovimConfigArchive is a base64-encoded tar.gz archive of a Neovim config directory.
+                      Extracted to ~/.config/nvim on workspace creation. Supports multi-file configs
+                      (init.lua + lua/ subdirectories). Ignored if NeovimConfigRepo is set.
+                    type: string
+                  neovimConfigRepo:
+                    description: |-
+                      NeovimConfigRepo is a Git URL for a Neovim configuration.
+                      Cloned to ~/.config/nvim on first workspace creation.
+                    type: string
+                  neovimInitLua:
+                    description: |-
+                      NeovimInitLua is inline init.lua content written to ~/.config/nvim/init.lua.
+                      Use this when the config is not in a git repo. Ignored if NeovimConfigRepo is set.
+                    type: string
+                type: object
               envFrom:
                 description: |-
                   EnvFrom copies environment variables from an existing workload
@@ -146,12 +167,60 @@ spec:
                   Set by the server from the authenticated user's JWT.
                 minLength: 1
                 type: string
+              repositories:
+                description: |-
+                  Repositories is a list of Git repositories to clone into the workspace.
+                  Each repository is cloned as a sibling directory under /workspace/{repo-name}/.
+                  When multiple repositories are specified, a VS Code .code-workspace file
+                  is generated automatically.
+                items:
+                  description: WorkspaceRepository configures a Git repository to
+                    clone into the workspace.
+                  properties:
+                    branch:
+                      default: main
+                      description: Branch to checkout.
+                      type: string
+                    name:
+                      description: |-
+                        Name is the directory name under /workspace/ to clone into.
+                        If empty, derived from the repository URL (e.g., "butler-api" from
+                        "https://github.com/butlerdotdev/butler-api").
+                      type: string
+                    secretRef:
+                      description: |-
+                        SecretRef for Git credentials (SSH key or token).
+                        References a Secret in the team namespace on the management cluster.
+                        The controller copies it to the tenant cluster's workspaces namespace.
+                      properties:
+                        name:
+                          description: Name is the name of the resource.
+                          minLength: 1
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    url:
+                      description: URL is the Git repository URL.
+                      type: string
+                  required:
+                  - url
+                  type: object
+                type: array
               repository:
-                description: Repository to clone into the workspace on creation.
+                description: |-
+                  Repository to clone into the workspace on creation.
+                  Deprecated: Use Repositories for multi-repo support.
                 properties:
                   branch:
                     default: main
                     description: Branch to checkout.
+                    type: string
+                  name:
+                    description: |-
+                      Name is the directory name under /workspace/ to clone into.
+                      If empty, derived from the repository URL (e.g., "butler-api" from
+                      "https://github.com/butlerdotdev/butler-api").
                     type: string
                   secretRef:
                     description: |-
@@ -195,7 +264,7 @@ spec:
                 anyOf:
                 - type: integer
                 - type: string
-                default: 50Gi
+                default: 10Gi
                 description: StorageSize for the workspace PVC.
                 pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                 x-kubernetes-int-or-string: true
