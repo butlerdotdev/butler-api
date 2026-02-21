@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"encoding/json"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -524,6 +526,35 @@ type ExtensionValues struct {
 	// Raw is the raw JSON/YAML values.
 	// +optional
 	Raw []byte `json:"-"`
+}
+
+// MarshalJSON implements json.Marshaler for ExtensionValues.
+func (v ExtensionValues) MarshalJSON() ([]byte, error) {
+	if v.Raw == nil {
+		return []byte("{}"), nil
+	}
+	return v.Raw, nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler for ExtensionValues.
+func (v *ExtensionValues) UnmarshalJSON(data []byte) error {
+	if data == nil || string(data) == "null" {
+		return nil
+	}
+	v.Raw = append(v.Raw[0:0], data...)
+	return nil
+}
+
+// ToMap converts ExtensionValues to a map for use with Helm.
+func (v *ExtensionValues) ToMap() (map[string]interface{}, error) {
+	if v == nil || v.Raw == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(v.Raw, &m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // TenantClusterPhase represents the current phase of a TenantCluster.

@@ -252,6 +252,86 @@ spec:
                     - Disabled
                     type: string
                 type: object
+              observability:
+                description: Observability configures platform-level observability
+                  (pipeline, collection defaults).
+                properties:
+                  collection:
+                    description: Collection configures default collection settings
+                      for tenant clusters.
+                    properties:
+                      autoEnroll:
+                        description: |-
+                          AutoEnroll controls whether new tenant clusters automatically get
+                          observability agents installed. Stores intent only — not yet implemented
+                          by a controller.
+                        type: boolean
+                      logs:
+                        description: Logs configures default log collection settings.
+                        properties:
+                          journald:
+                            description: Journald enables collection of systemd journal
+                              logs.
+                            type: boolean
+                          kubernetesEvents:
+                            description: KubernetesEvents enables collection of Kubernetes
+                              events.
+                            type: boolean
+                          podLogs:
+                            description: PodLogs enables collection of container stdout/stderr
+                              logs.
+                            type: boolean
+                        type: object
+                      metrics:
+                        description: Metrics configures default metric collection
+                          settings.
+                        properties:
+                          enabled:
+                            description: Enabled controls whether metrics collection
+                              is enabled by default.
+                            type: boolean
+                          retention:
+                            description: Retention is the Prometheus data retention
+                              period (e.g., "15d").
+                            type: string
+                        type: object
+                    type: object
+                  pipeline:
+                    description: Pipeline configures the centralized observability
+                      pipeline cluster.
+                    properties:
+                      clusterRef:
+                        description: ClusterRef references the TenantCluster serving
+                          as the observability pipeline.
+                        properties:
+                          name:
+                            description: Name is the name of the resource.
+                            minLength: 1
+                            type: string
+                          namespace:
+                            description: Namespace is the namespace of the resource.
+                            minLength: 1
+                            type: string
+                        required:
+                        - name
+                        - namespace
+                        type: object
+                      logEndpoint:
+                        description: |-
+                          LogEndpoint is the Vector aggregator ingestion URL.
+                          Example: "http://vector-aggregator.vector.svc:9000"
+                        type: string
+                      metricEndpoint:
+                        description: MetricEndpoint is the optional remote-write endpoint
+                          for metrics.
+                        type: string
+                      traceEndpoint:
+                        description: |-
+                          TraceEndpoint is the optional OTLP endpoint for traces.
+                          Example: "tempo.tracing.svc:4317"
+                        type: string
+                    type: object
+                type: object
             type: object
           status:
             description: ButlerConfigStatus defines the observed state of ButlerConfig.
@@ -347,6 +427,23 @@ spec:
                     description: Username is the authenticated username (from token
                       validation).
                     type: string
+                type: object
+              observability:
+                description: Observability shows the status of platform observability.
+                properties:
+                  enrolledCount:
+                    description: EnrolledCount is the number of tenant clusters with
+                      observability agents installed.
+                    format: int32
+                    type: integer
+                  pipelineReady:
+                    description: PipelineReady indicates whether the observability
+                      pipeline cluster is healthy.
+                    type: boolean
+                  totalCount:
+                    description: TotalCount is the total number of tenant clusters.
+                    format: int32
+                    type: integer
                 type: object
               observedGeneration:
                 description: ObservedGeneration is the last observed generation.

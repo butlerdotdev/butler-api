@@ -79,6 +79,10 @@ type ButlerConfigSpec struct {
 	// initial setup and inherited by all TenantClusters.
 	// +optional
 	ControlPlaneExposure *ControlPlaneExposureSpec `json:"controlPlaneExposure,omitempty"`
+
+	// Observability configures platform-level observability (pipeline, collection defaults).
+	// +optional
+	Observability *ObservabilityConfig `json:"observability,omitempty"`
 }
 
 // MultiTenancyConfig configures multi-tenancy behavior.
@@ -173,6 +177,10 @@ type ButlerConfigStatus struct {
 	// True when ControlPlaneExposureMode is Ingress or Gateway.
 	// +optional
 	TCPProxyRequired bool `json:"tcpProxyRequired,omitempty"`
+
+	// Observability shows the status of platform observability.
+	// +optional
+	Observability *ObservabilityStatus `json:"observability,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -268,4 +276,12 @@ func (c *ButlerConfig) GetControlPlaneExposureControllerType() string {
 		return ""
 	}
 	return c.Spec.ControlPlaneExposure.ControllerType
+}
+
+// IsObservabilityConfigured returns true if an observability pipeline is configured.
+func (c *ButlerConfig) IsObservabilityConfigured() bool {
+	return c.Spec.Observability != nil &&
+		c.Spec.Observability.Pipeline != nil &&
+		c.Spec.Observability.Pipeline.ClusterRef != nil &&
+		c.Spec.Observability.Pipeline.ClusterRef.Name != ""
 }
