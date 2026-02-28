@@ -51,11 +51,10 @@ type ObservabilityPipelineConfig struct {
 
 // ObservabilityCollectionConfig configures default collection settings.
 type ObservabilityCollectionConfig struct {
-	// AutoEnroll controls whether new tenant clusters automatically get
-	// observability agents installed. Stores intent only — not yet implemented
-	// by a controller.
+	// AutoEnroll controls which observability agents are automatically installed
+	// on new tenant clusters when they reach Ready phase.
 	// +optional
-	AutoEnroll bool `json:"autoEnroll,omitempty"`
+	AutoEnroll *AutoEnrollConfig `json:"autoEnroll,omitempty"`
 
 	// Logs configures default log collection settings.
 	// +optional
@@ -64,6 +63,24 @@ type ObservabilityCollectionConfig struct {
 	// Metrics configures default metric collection settings.
 	// +optional
 	Metrics *MetricCollectionDefaults `json:"metrics,omitempty"`
+}
+
+// AutoEnrollConfig controls per-agent auto-enrollment for new tenant clusters.
+type AutoEnrollConfig struct {
+	// VectorAgent enables automatic installation of the Vector log/metric collector.
+	// Requires pipeline.logEndpoint to be configured.
+	// +optional
+	VectorAgent bool `json:"vectorAgent,omitempty"`
+
+	// Prometheus enables automatic installation of the Prometheus monitoring stack.
+	// Requires pipeline.metricEndpoint to be configured.
+	// +optional
+	Prometheus bool `json:"prometheus,omitempty"`
+
+	// OtelCollector enables automatic installation of the OpenTelemetry Collector.
+	// Requires pipeline.traceEndpoint to be configured.
+	// +optional
+	OtelCollector bool `json:"otelCollector,omitempty"`
 }
 
 // LogCollectionDefaults configures which log sources are collected by default.

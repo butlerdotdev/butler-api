@@ -262,10 +262,25 @@ spec:
                     properties:
                       autoEnroll:
                         description: |-
-                          AutoEnroll controls whether new tenant clusters automatically get
-                          observability agents installed. Stores intent only — not yet implemented
-                          by a controller.
-                        type: boolean
+                          AutoEnroll controls which observability agents are automatically installed
+                          on new tenant clusters when they reach Ready phase.
+                        properties:
+                          otelCollector:
+                            description: |-
+                              OtelCollector enables automatic installation of the OpenTelemetry Collector.
+                              Requires pipeline.traceEndpoint to be configured.
+                            type: boolean
+                          prometheus:
+                            description: |-
+                              Prometheus enables automatic installation of the Prometheus monitoring stack.
+                              Requires pipeline.metricEndpoint to be configured.
+                            type: boolean
+                          vectorAgent:
+                            description: |-
+                              VectorAgent enables automatic installation of the Vector log/metric collector.
+                              Requires pipeline.logEndpoint to be configured.
+                            type: boolean
+                        type: object
                       logs:
                         description: Logs configures default log collection settings.
                         properties:
