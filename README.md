@@ -1,13 +1,27 @@
-# Butler API
+<p align="center">
+  <img src="https://raw.githubusercontent.com/butlerdotdev/butler/main/assets/mascots/butler.png" alt="Butler" width="150"/>
+</p>
 
-<p align="left">
+<h1 align="center">Butler API</h1>
+
+<p align="center">
+  Shared CRD type definitions for the <a href="https://github.com/butlerdotdev/butler">Butler</a> platform.
+</p>
+
+<p align="center">
   <a href="https://github.com/butlerdotdev/butler-api/blob/main/LICENSE"><img src="https://img.shields.io/github/license/butlerdotdev/butler-api" alt="License"></a>
   <img src="https://img.shields.io/github/go-mod/go-version/butlerdotdev/butler-api" alt="Go Version">
   <a href="https://goreportcard.com/report/github.com/butlerdotdev/butler-api"><img src="https://goreportcard.com/badge/github.com/butlerdotdev/butler-api" alt="Go Report Card"></a>
   <a href="https://pkg.go.dev/github.com/butlerdotdev/butler-api"><img src="https://pkg.go.dev/badge/github.com/butlerdotdev/butler-api.svg" alt="Go Reference"></a>
 </p>
 
-API type definitions for the [Butler](https://github.com/butlerdotdev/butler) Kubernetes-as-a-Service platform. This repository defines all Butler Custom Resource Definitions (CRDs) and serves as the API contract for the entire platform.
+<p align="center">
+  <a href="https://github.com/butlerdotdev/butler">Butler</a> · <a href="https://docs.butlerlabs.dev">Docs</a> · <a href="https://butlerlabs.dev">Website</a>
+</p>
+
+---
+
+This repository defines all Butler Custom Resource Definitions (CRDs) and serves as the API contract for the entire platform.
 
 ## Overview
 
