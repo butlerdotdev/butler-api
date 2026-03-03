@@ -72,6 +72,45 @@ type NamespacedObjectReference struct {
 	Namespace string `json:"namespace"`
 }
 
+// ControlPlaneResourcesSpec defines resource requests/limits for tenant
+// control plane components. Used in ButlerConfig (platform defaults) and
+// TenantCluster (per-cluster overrides).
+type ControlPlaneResourcesSpec struct {
+	// APIServer resource requirements.
+	// +optional
+	APIServer *ComponentResources `json:"apiServer,omitempty"`
+
+	// ControllerManager resource requirements.
+	// +optional
+	ControllerManager *ComponentResources `json:"controllerManager,omitempty"`
+
+	// Scheduler resource requirements.
+	// +optional
+	Scheduler *ComponentResources `json:"scheduler,omitempty"`
+}
+
+// ComponentResources defines CPU and memory requests/limits for a component.
+type ComponentResources struct {
+	// Requests describes the minimum resources required.
+	// +optional
+	Requests *ResourceQuantities `json:"requests,omitempty"`
+
+	// Limits describes the maximum resources allowed.
+	// +optional
+	Limits *ResourceQuantities `json:"limits,omitempty"`
+}
+
+// ResourceQuantities defines CPU and memory quantities.
+type ResourceQuantities struct {
+	// CPU resource (e.g., "100m", "1", "2").
+	// +optional
+	CPU *resource.Quantity `json:"cpu,omitempty"`
+
+	// Memory resource (e.g., "128Mi", "1Gi").
+	// +optional
+	Memory *resource.Quantity `json:"memory,omitempty"`
+}
+
 // TeamResourceLimits defines resource quotas and restrictions for a Team.
 // This is separate from ResourceLimits in butlerconfig_types.go which defines
 // platform-wide defaults. TeamResourceLimits includes additional fields for
