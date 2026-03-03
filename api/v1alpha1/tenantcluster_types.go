@@ -185,6 +185,12 @@ type ControlPlaneSpec struct {
 	// +kubebuilder:default=true
 	// +optional
 	ExternalCloudProvider *bool `json:"externalCloudProvider,omitempty"`
+
+	// Resources overrides platform-level control plane resource defaults from ButlerConfig.
+	// Per-component: if a component is set here, it fully replaces the ButlerConfig default
+	// for that component. Components not set here inherit from ButlerConfig.
+	// +optional
+	Resources *ControlPlaneResourcesSpec `json:"resources,omitempty"`
 }
 
 // WorkersSpec configures worker nodes.

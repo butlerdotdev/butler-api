@@ -83,6 +83,13 @@ type ButlerConfigSpec struct {
 	// Observability configures platform-level observability (pipeline, collection defaults).
 	// +optional
 	Observability *ObservabilityConfig `json:"observability,omitempty"`
+
+	// DefaultControlPlaneResources configures default resource allocations for
+	// tenant control plane components (apiserver, controller-manager, scheduler).
+	// Applied to new TenantClusters when they don't specify per-cluster overrides.
+	// If not set, pods run with no resource requests (BestEffort QoS).
+	// +optional
+	DefaultControlPlaneResources *ControlPlaneResourcesSpec `json:"defaultControlPlaneResources,omitempty"`
 }
 
 // MultiTenancyConfig configures multi-tenancy behavior.
@@ -276,6 +283,15 @@ func (c *ButlerConfig) GetControlPlaneExposureControllerType() string {
 		return ""
 	}
 	return c.Spec.ControlPlaneExposure.ControllerType
+}
+
+// GetDefaultControlPlaneResources returns the platform-wide default control plane resources.
+// Returns nil if not configured (BestEffort QoS).
+func (c *ButlerConfig) GetDefaultControlPlaneResources() *ControlPlaneResourcesSpec {
+	if c == nil || c.Spec.DefaultControlPlaneResources == nil {
+		return nil
+	}
+	return c.Spec.DefaultControlPlaneResources
 }
 
 // IsObservabilityConfigured returns true if an observability pipeline is configured.
