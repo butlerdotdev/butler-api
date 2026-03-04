@@ -132,6 +132,11 @@ type ImageSyncStatus struct {
 	// +optional
 	ArtifactSHA256 string `json:"artifactSHA256,omitempty"`
 
+	// ProviderTaskID tracks a provider-side async task (e.g., Nutanix Prism Central task UUID).
+	// Set during Downloading/Uploading phases, cleared on completion or failure.
+	// +optional
+	ProviderTaskID string `json:"providerTaskID,omitempty"`
+
 	// FailureReason provides a machine-readable failure reason.
 	// +optional
 	FailureReason string `json:"failureReason,omitempty"`

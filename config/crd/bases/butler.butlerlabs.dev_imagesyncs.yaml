@@ -236,6 +236,11 @@ spec:
                   ProviderImageRef is the provider-specific image reference once synced.
                   Harvester: "namespace/name", Nutanix: UUID, Proxmox: template ID.
                 type: string
+              providerTaskID:
+                description: |-
+                  ProviderTaskID tracks a provider-side async task (e.g., Nutanix Prism Central task UUID).
+                  Set during Downloading/Uploading phases, cleared on completion or failure.
+                type: string
             type: object
         type: object
     served: true
