@@ -368,6 +368,51 @@ spec:
                 - secretRef
                 - type
                 type: object
+              imageFactory:
+                description: |-
+                  ImageFactory configures the Butler Image Factory connection.
+                  Required for automatic image syncing to infrastructure providers.
+                properties:
+                  autoSync:
+                    default: true
+                    description: |-
+                      AutoSync enables automatic image syncing when a TenantCluster references
+                      an image not yet available on the target provider.
+                    type: boolean
+                  credentialsRef:
+                    description: |-
+                      CredentialsRef references the Secret containing the factory API key.
+                      The Secret must contain a key named "apiKey".
+                    properties:
+                      key:
+                        description: |-
+                          Key is the key within the Secret to reference.
+                          If not specified, the entire Secret data is used.
+                        type: string
+                      name:
+                        description: Name is the name of the Secret.
+                        minLength: 1
+                        type: string
+                      namespace:
+                        description: |-
+                          Namespace is the namespace of the Secret.
+                          If not specified, the namespace of the referencing resource is used.
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  defaultSchematicID:
+                    description: |-
+                      DefaultSchematicID is the default schematic used when TenantClusters
+                      don't specify one. Content-addressable SHA-256 hex string.
+                    type: string
+                  url:
+                    description: URL is the base URL of the Image Factory API.
+                    pattern: ^https?://
+                    type: string
+                required:
+                - url
+                type: object
               multiTenancy:
                 description: MultiTenancy configures how multi-tenancy is handled.
                 properties:

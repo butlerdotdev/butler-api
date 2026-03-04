@@ -269,6 +269,15 @@ const (
 
 	// LabelAllocationType identifies the IP allocation type (loadbalancer, nodes).
 	LabelAllocationType = "butler.butlerlabs.dev/allocation-type"
+
+	// LabelSchematicID identifies the factory schematic for image sync deduplication.
+	LabelSchematicID = "butler.butlerlabs.dev/schematic-id"
+
+	// LabelImageVersion identifies the image version for image sync deduplication.
+	LabelImageVersion = "butler.butlerlabs.dev/image-version"
+
+	// LabelImageArch identifies the image architecture for image sync deduplication.
+	LabelImageArch = "butler.butlerlabs.dev/image-arch"
 )
 
 // Butler-specific annotations.
@@ -311,6 +320,9 @@ const (
 
 	// FinalizerWorkspace is the finalizer for Workspace resources.
 	FinalizerWorkspace = "butler.butlerlabs.dev/workspace"
+
+	// FinalizerImageSync is the finalizer for ImageSync resources.
+	FinalizerImageSync = "butler.butlerlabs.dev/imagesync"
 )
 
 // Condition types following Kubernetes API conventions.
@@ -393,4 +405,19 @@ const (
 
 	// ReasonPoolAvailable indicates the network pool has capacity.
 	ReasonPoolAvailable = "PoolAvailable"
+
+	// ReasonImageBuilding indicates the factory is building the image.
+	ReasonImageBuilding = "ImageBuilding"
+
+	// ReasonImageDownloading indicates the image is being downloaded.
+	ReasonImageDownloading = "ImageDownloading"
+
+	// ReasonImageUploading indicates the image is being uploaded to the provider.
+	ReasonImageUploading = "ImageUploading"
+
+	// ReasonImageReady indicates the image is available on the provider.
+	ReasonImageReady = "ImageReady"
+
+	// ReasonImageSyncFailed indicates the image sync failed.
+	ReasonImageSyncFailed = "ImageSyncFailed"
 )

@@ -245,6 +245,12 @@ type OSSpec struct {
 	// +optional
 	ImageRef string `json:"imageRef,omitempty"`
 
+	// SchematicID references a Butler Image Factory schematic.
+	// When set with AutoSync enabled, Butler automatically syncs the
+	// factory-built image to the target provider before VM creation.
+	// +optional
+	SchematicID string `json:"schematicID,omitempty"`
+
 	// Talos provides Talos-specific worker node configuration.
 	// Required when type is "talos".
 	// +optional
@@ -641,6 +647,10 @@ type TenantClusterStatus struct {
 	// LBAllocationRef references the load balancer IP allocation from IPAM.
 	// +optional
 	LBAllocationRef *LocalObjectReference `json:"lbAllocationRef,omitempty"`
+
+	// ImageSyncRef references the ImageSync resource for this cluster's OS image.
+	// +optional
+	ImageSyncRef *LocalObjectReference `json:"imageSyncRef,omitempty"`
 }
 
 // ObservedClusterState captures the current state of the cluster.
@@ -710,6 +720,9 @@ const (
 
 	// TenantClusterConditionProviderAccessGranted indicates scope check passed.
 	TenantClusterConditionProviderAccessGranted = "ProviderAccessGranted"
+
+	// TenantClusterConditionImageReady indicates the OS image is synced to the provider.
+	TenantClusterConditionImageReady = "ImageReady"
 )
 
 // +kubebuilder:object:root=true
