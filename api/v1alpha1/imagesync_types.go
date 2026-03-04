@@ -65,6 +65,13 @@ type ImageFactoryRef struct {
 	// +kubebuilder:default="amd64"
 	// +optional
 	Arch string `json:"arch,omitempty"`
+
+	// Platform is the target platform for the image artifact.
+	// Maps to the Talos Image Factory platform identifier (e.g., "nocloud", "metal", "vmware").
+	// Defaults to "nocloud" which works for KubeVirt/cloud-init environments (Harvester, Nutanix).
+	// +kubebuilder:default="nocloud"
+	// +optional
+	Platform string `json:"platform,omitempty"`
 }
 
 // ImageSyncPhase represents the lifecycle phase of an ImageSync.
