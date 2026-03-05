@@ -90,6 +90,11 @@ type ButlerConfigSpec struct {
 	// If not set, pods run with no resource requests (BestEffort QoS).
 	// +optional
 	DefaultControlPlaneResources *ControlPlaneResourcesSpec `json:"defaultControlPlaneResources,omitempty"`
+
+	// ImageFactory configures the Butler Image Factory connection.
+	// Required for automatic image syncing to infrastructure providers.
+	// +optional
+	ImageFactory *ImageFactoryConfig `json:"imageFactory,omitempty"`
 }
 
 // MultiTenancyConfig configures multi-tenancy behavior.
@@ -300,4 +305,49 @@ func (c *ButlerConfig) IsObservabilityConfigured() bool {
 		c.Spec.Observability.Pipeline != nil &&
 		c.Spec.Observability.Pipeline.ClusterRef != nil &&
 		c.Spec.Observability.Pipeline.ClusterRef.Name != ""
+}
+
+// IsImageFactoryConfigured returns true if the Image Factory is configured.
+func (c *ButlerConfig) IsImageFactoryConfigured() bool {
+	return c.Spec.ImageFactory != nil && c.Spec.ImageFactory.URL != ""
+}
+
+// GetImageFactoryURL returns the Image Factory URL, or empty string if not configured.
+func (c *ButlerConfig) GetImageFactoryURL() string {
+	if c.Spec.ImageFactory == nil {
+		return ""
+	}
+	return c.Spec.ImageFactory.URL
+}
+
+// IsAutoSyncEnabled returns true if automatic image syncing is enabled.
+func (c *ButlerConfig) IsAutoSyncEnabled() bool {
+	if c.Spec.ImageFactory == nil || c.Spec.ImageFactory.AutoSync == nil {
+		return true // default is true
+	}
+	return *c.Spec.ImageFactory.AutoSync
+}
+
+// ImageFactoryConfig configures the Butler Image Factory.
+type ImageFactoryConfig struct {
+	// URL is the base URL of the Image Factory API.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^https?://`
+	URL string `json:"url"`
+
+	// CredentialsRef references the Secret containing the factory API key.
+	// The Secret must contain a key named "apiKey".
+	// +optional
+	CredentialsRef *SecretReference `json:"credentialsRef,omitempty"`
+
+	// DefaultSchematicID is the default schematic used when TenantClusters
+	// don't specify one. Content-addressable SHA-256 hex string.
+	// +optional
+	DefaultSchematicID string `json:"defaultSchematicID,omitempty"`
+
+	// AutoSync enables automatic image syncing when a TenantCluster references
+	// an image not yet available on the target provider.
+	// +kubebuilder:default=true
+	// +optional
+	AutoSync *bool `json:"autoSync,omitempty"`
 }
