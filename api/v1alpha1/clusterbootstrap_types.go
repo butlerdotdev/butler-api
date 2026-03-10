@@ -117,8 +117,8 @@ type ControlPlaneExposureSpec struct {
 
 // ClusterBootstrapSpec defines the desired state of ClusterBootstrap
 type ClusterBootstrapSpec struct {
-	// Provider is the infrastructure provider type (harvester, nutanix, proxmox)
-	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox
+	// Provider is the infrastructure provider type.
+	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox;gcp;aws;azure
 	Provider string `json:"provider"`
 
 	// ProviderRef references the ProviderConfig to use for provisioning
@@ -229,12 +229,13 @@ type ClusterBootstrapNetworkSpec struct {
 	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$`
 	ServiceCIDR string `json:"serviceCIDR"`
 
-	// VIP is the virtual IP for the control plane endpoint (kube-vip)
-	// This IP is used ONLY for kube-apiserver HA and must NOT be in LoadBalancerPool
-	// For single-node topology, the VIP still provides a stable endpoint for the API server
-	// +kubebuilder:validation:Required
+	// VIP is the virtual IP for the control plane endpoint (kube-vip).
+	// Required for on-prem providers (harvester, nutanix, proxmox).
+	// Optional for cloud providers (gcp, aws, azure) where the first
+	// control plane node IP is used as the endpoint instead.
+	// +optional
 	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
-	VIP string `json:"vip"`
+	VIP string `json:"vip,omitempty"`
 
 	// VIPInterface is the network interface for the VIP (optional, auto-detected)
 	// +optional
@@ -324,22 +325,29 @@ func ipToUint32(ip net.IP) uint32 {
 	return binary.BigEndian.Uint32(ip)
 }
 
-// Validate validates the network configuration
+// Validate validates the network configuration.
+// VIP is optional for cloud providers where kube-vip is not used.
 func (n *ClusterBootstrapNetworkSpec) Validate() error {
-	vip := net.ParseIP(n.VIP)
-	if vip == nil {
-		return fmt.Errorf("invalid VIP address: %s", n.VIP)
-	}
-
-	if n.LoadBalancerPool != nil {
-		if err := n.LoadBalancerPool.Validate(); err != nil {
-			return fmt.Errorf("invalid loadBalancerPool: %w", err)
+	if n.VIP != "" {
+		vip := net.ParseIP(n.VIP)
+		if vip == nil {
+			return fmt.Errorf("invalid VIP address: %s", n.VIP)
 		}
 
-		if n.LoadBalancerPool.ContainsIP(n.VIP) {
-			return fmt.Errorf("VIP %s must not be within loadBalancerPool range %s-%s; "+
-				"kube-vip and MetalLB will conflict if they share IPs",
-				n.VIP, n.LoadBalancerPool.Start, n.LoadBalancerPool.End)
+		if n.LoadBalancerPool != nil {
+			if err := n.LoadBalancerPool.Validate(); err != nil {
+				return fmt.Errorf("invalid loadBalancerPool: %w", err)
+			}
+
+			if n.LoadBalancerPool.ContainsIP(n.VIP) {
+				return fmt.Errorf("VIP %s must not be within loadBalancerPool range %s-%s; "+
+					"kube-vip and MetalLB will conflict if they share IPs",
+					n.VIP, n.LoadBalancerPool.Start, n.LoadBalancerPool.End)
+			}
+		}
+	} else if n.LoadBalancerPool != nil {
+		if err := n.LoadBalancerPool.Validate(); err != nil {
+			return fmt.Errorf("invalid loadBalancerPool: %w", err)
 		}
 	}
 
@@ -568,7 +576,7 @@ type CAPIAddonSpec struct {
 // CAPIInfraProviderSpec defines an infrastructure provider configuration
 type CAPIInfraProviderSpec struct {
 	// Name is the provider name
-	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox
+	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox;gcp;aws;azure
 	Name string `json:"name"`
 
 	// Version overrides the default provider version
@@ -766,6 +774,17 @@ func (c *ClusterBootstrap) IsFailed() bool {
 // IsSingleNode returns true if this is a single-node topology
 func (c *ClusterBootstrap) IsSingleNode() bool {
 	return c.Spec.Cluster.Topology == ClusterTopologySingleNode
+}
+
+// IsCloudProvider returns true if the provider is a cloud provider (gcp, aws, azure).
+// Cloud providers skip kube-vip (no gratuitous ARP) and use the first control plane
+// node IP as the API server endpoint instead of a VIP.
+func (c *ClusterBootstrap) IsCloudProvider() bool {
+	switch c.Spec.Provider {
+	case "gcp", "aws", "azure":
+		return true
+	}
+	return false
 }
 
 // GetExpectedMachineCount returns the expected number of machines based on topology

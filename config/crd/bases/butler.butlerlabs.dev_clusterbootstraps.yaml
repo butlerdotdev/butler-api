@@ -122,6 +122,9 @@ spec:
                               - harvester
                               - nutanix
                               - proxmox
+                              - gcp
+                              - aws
+                              - azure
                               type: string
                             version:
                               description: Version overrides the default provider
@@ -539,9 +542,10 @@ spec:
                     type: string
                   vip:
                     description: |-
-                      VIP is the virtual IP for the control plane endpoint (kube-vip)
-                      This IP is used ONLY for kube-apiserver HA and must NOT be in LoadBalancerPool
-                      For single-node topology, the VIP still provides a stable endpoint for the API server
+                      VIP is the virtual IP for the control plane endpoint (kube-vip).
+                      Required for on-prem providers (harvester, nutanix, proxmox).
+                      Optional for cloud providers (gcp, aws, azure) where the first
+                      control plane node IP is used as the endpoint instead.
                     pattern: ^([0-9]{1,3}\.){3}[0-9]{1,3}$
                     type: string
                   vipInterface:
@@ -551,18 +555,19 @@ spec:
                 required:
                 - podCIDR
                 - serviceCIDR
-                - vip
                 type: object
               paused:
                 description: Paused can be set to true to pause reconciliation
                 type: boolean
               provider:
-                description: Provider is the infrastructure provider type (harvester,
-                  nutanix, proxmox)
+                description: Provider is the infrastructure provider type.
                 enum:
                 - harvester
                 - nutanix
                 - proxmox
+                - gcp
+                - aws
+                - azure
                 type: string
               providerRef:
                 description: |-
