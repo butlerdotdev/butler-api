@@ -557,6 +557,12 @@ spec:
                               When set with AutoSync enabled, Butler automatically syncs the
                               factory-built image to the target provider before VM creation.
                             type: string
+                          sshAuthorizedKey:
+                            description: |-
+                              SSHAuthorizedKey overrides the platform default SSH public key for this cluster's workers.
+                              Only applies to non-Talos OS types (Flatcar, Bottlerocket).
+                              If empty, falls back to ButlerConfig.spec.sshAuthorizedKey.
+                            type: string
                           talos:
                             description: |-
                               Talos provides Talos-specific worker node configuration.
@@ -584,6 +590,8 @@ spec:
                             - rocky
                             - flatcar
                             - talos
+                            - kairos
+                            - bottlerocket
                             type: string
                           version:
                             default: "9.5"

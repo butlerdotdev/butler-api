@@ -42,7 +42,7 @@ const (
 )
 
 // OSType defines the operating system for worker nodes.
-// +kubebuilder:validation:Enum=rocky;flatcar;talos
+// +kubebuilder:validation:Enum=rocky;flatcar;talos;kairos;bottlerocket
 type OSType string
 
 const (
@@ -54,6 +54,12 @@ const (
 
 	// OSTypeTalos is Talos Linux (immutable OS).
 	OSTypeTalos OSType = "talos"
+
+	// OSTypeKairos is Kairos (immutable, cloud-config based OS).
+	OSTypeKairos OSType = "kairos"
+
+	// OSTypeBottlerocket is Bottlerocket (immutable, TOML-configured OS).
+	OSTypeBottlerocket OSType = "bottlerocket"
 )
 
 // TenantClusterSpec defines the desired state of TenantCluster.
@@ -250,6 +256,12 @@ type OSSpec struct {
 	// factory-built image to the target provider before VM creation.
 	// +optional
 	SchematicID string `json:"schematicID,omitempty"`
+
+	// SSHAuthorizedKey overrides the platform default SSH public key for this cluster's workers.
+	// Only applies to non-Talos OS types (Flatcar, Bottlerocket).
+	// If empty, falls back to ButlerConfig.spec.sshAuthorizedKey.
+	// +optional
+	SSHAuthorizedKey string `json:"sshAuthorizedKey,omitempty"`
 
 	// Talos provides Talos-specific worker node configuration.
 	// Required when type is "talos".

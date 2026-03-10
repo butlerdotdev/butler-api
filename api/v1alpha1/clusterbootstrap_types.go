@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -325,13 +326,34 @@ func ipToUint32(ip net.IP) uint32 {
 	return binary.BigEndian.Uint32(ip)
 }
 
+// isValidEndpoint returns true if s is a valid IP address or RFC 1123 hostname.
+func isValidEndpoint(s string) bool {
+	if net.ParseIP(s) != nil {
+		return true
+	}
+	if len(s) == 0 || len(s) > 253 {
+		return false
+	}
+	for _, label := range strings.Split(s, ".") {
+		if len(label) == 0 || len(label) > 63 {
+			return false
+		}
+		for i, c := range label {
+			if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (c == '-' && i > 0 && i < len(label)-1)) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // Validate validates the network configuration.
 // VIP is optional for cloud providers where kube-vip is not used.
+// VIP may be an IP address (on-prem) or a DNS hostname (cloud LB endpoint).
 func (n *ClusterBootstrapNetworkSpec) Validate() error {
 	if n.VIP != "" {
-		vip := net.ParseIP(n.VIP)
-		if vip == nil {
-			return fmt.Errorf("invalid VIP address: %s", n.VIP)
+		if !isValidEndpoint(n.VIP) {
+			return fmt.Errorf("invalid VIP address or hostname: %s", n.VIP)
 		}
 
 		if n.LoadBalancerPool != nil {
@@ -339,7 +361,9 @@ func (n *ClusterBootstrapNetworkSpec) Validate() error {
 				return fmt.Errorf("invalid loadBalancerPool: %w", err)
 			}
 
-			if n.LoadBalancerPool.ContainsIP(n.VIP) {
+			// Only check VIP/pool overlap for IP-based VIPs (on-prem with MetalLB).
+			// DNS-based VIPs (cloud LB endpoints) never overlap with MetalLB pools.
+			if net.ParseIP(n.VIP) != nil && n.LoadBalancerPool.ContainsIP(n.VIP) {
 				return fmt.Errorf("VIP %s must not be within loadBalancerPool range %s-%s; "+
 					"kube-vip and MetalLB will conflict if they share IPs",
 					n.VIP, n.LoadBalancerPool.Start, n.LoadBalancerPool.End)

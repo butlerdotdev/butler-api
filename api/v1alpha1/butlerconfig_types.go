@@ -95,6 +95,12 @@ type ButlerConfigSpec struct {
 	// Required for automatic image syncing to infrastructure providers.
 	// +optional
 	ImageFactory *ImageFactoryConfig `json:"imageFactory,omitempty"`
+
+	// SSHAuthorizedKey is the default SSH public key injected into worker nodes
+	// for platform-level diagnostic access. Applied to non-Talos workers only.
+	// Can be overridden per-cluster via TenantCluster.spec.workers.machineTemplate.os.sshAuthorizedKey.
+	// +optional
+	SSHAuthorizedKey string `json:"sshAuthorizedKey,omitempty"`
 }
 
 // MultiTenancyConfig configures multi-tenancy behavior.
