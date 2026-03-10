@@ -21,7 +21,7 @@ import (
 )
 
 // AddonCategory defines the category of an addon for UI grouping.
-// +kubebuilder:validation:Enum=cni;loadbalancer;storage;certmanager;ingress;observability;backup;gitops;security;other
+// +kubebuilder:validation:Enum=cni;loadbalancer;storage;certmanager;ingress;observability;backup;gitops;security;dns;database;messaging;service-mesh;other
 type AddonCategory string
 
 const (
@@ -34,6 +34,10 @@ const (
 	AddonCategoryBackup        AddonCategory = "backup"
 	AddonCategoryGitOps        AddonCategory = "gitops"
 	AddonCategorySecurity      AddonCategory = "security"
+	AddonCategoryDNS           AddonCategory = "dns"
+	AddonCategoryDatabase      AddonCategory = "database"
+	AddonCategoryMessaging     AddonCategory = "messaging"
+	AddonCategoryServiceMesh   AddonCategory = "service-mesh"
 	AddonCategoryOther         AddonCategory = "other"
 )
 
