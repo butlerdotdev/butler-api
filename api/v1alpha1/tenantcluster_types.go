@@ -300,6 +300,10 @@ type InfrastructureOverride struct {
 	// Proxmox contains Proxmox-specific overrides.
 	// +optional
 	Proxmox *ProxmoxOverride `json:"proxmox,omitempty"`
+
+	// GCP contains GCP-specific overrides.
+	// +optional
+	GCP *GCPOverride `json:"gcp,omitempty"`
 }
 
 // HarvesterOverride contains Harvester-specific settings.
@@ -349,6 +353,29 @@ type ProxmoxOverride struct {
 	// TemplateID is the VM template ID.
 	// +optional
 	TemplateID int `json:"templateID,omitempty"`
+}
+
+// GCPOverride contains GCP-specific settings that can be overridden per-cluster.
+type GCPOverride struct {
+	// Zone overrides the default GCP compute zone.
+	// +optional
+	Zone string `json:"zone,omitempty"`
+
+	// MachineType overrides the default GCE machine type.
+	// +optional
+	MachineType string `json:"machineType,omitempty"`
+
+	// Image overrides the default image.
+	// +optional
+	Image string `json:"image,omitempty"`
+
+	// ImageFamily overrides the default image family.
+	// +optional
+	ImageFamily string `json:"imageFamily,omitempty"`
+
+	// Subnetwork overrides the default subnetwork.
+	// +optional
+	Subnetwork string `json:"subnetwork,omitempty"`
 }
 
 // NetworkingSpec configures cluster networking.

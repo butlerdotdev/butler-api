@@ -55,6 +55,7 @@ type ProviderConfigSpec struct {
 	// - harvester: "kubeconfig" (Harvester kubeconfig)
 	// - nutanix: "username", "password"
 	// - proxmox: "username", "password" or "token"
+	// - gcp: "serviceAccountKey" (JSON service account key)
 	// +kubebuilder:validation:Required
 	CredentialsRef SecretReference `json:"credentialsRef"`
 
@@ -254,9 +255,14 @@ type GCPProviderConfig struct {
 	// +kubebuilder:validation:Required
 	ProjectID string `json:"projectID"`
 
-	// Region is the GCP region.
+	// Region is the GCP region (e.g., "us-central1").
 	// +kubebuilder:validation:Required
 	Region string `json:"region"`
+
+	// Zone is the GCP compute zone (e.g., "us-central1-a").
+	// If not specified, defaults to "{region}-a".
+	// +optional
+	Zone string `json:"zone,omitempty"`
 
 	// Network is the VPC network name.
 	// +optional
@@ -265,6 +271,32 @@ type GCPProviderConfig struct {
 	// Subnetwork is the subnetwork name.
 	// +optional
 	Subnetwork string `json:"subnetwork,omitempty"`
+
+	// MachineType is the default GCE machine type (e.g., "n2-standard-4").
+	// +optional
+	MachineType string `json:"machineType,omitempty"`
+
+	// ImageProject is the GCP project containing the source image (e.g., "ubuntu-os-cloud").
+	// +optional
+	ImageProject string `json:"imageProject,omitempty"`
+
+	// ImageFamily is the image family to use (e.g., "ubuntu-2204-lts").
+	// Ignored if Image is specified.
+	// +optional
+	ImageFamily string `json:"imageFamily,omitempty"`
+
+	// Image is the specific image name to use.
+	// Takes precedence over ImageFamily.
+	// +optional
+	Image string `json:"image,omitempty"`
+
+	// ServiceAccount is the GCE service account email for VM instances.
+	// +optional
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+
+	// Tags are network tags applied to VM instances for firewall rules.
+	// +optional
+	Tags []string `json:"tags,omitempty"`
 }
 
 // ProviderConfigScopeType defines the visibility scope.
