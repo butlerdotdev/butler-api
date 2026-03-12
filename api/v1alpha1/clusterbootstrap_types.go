@@ -230,12 +230,11 @@ type ClusterBootstrapNetworkSpec struct {
 	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$`
 	ServiceCIDR string `json:"serviceCIDR"`
 
-	// VIP is the virtual IP for the control plane endpoint (kube-vip).
-	// Required for on-prem providers (harvester, nutanix, proxmox).
-	// Optional for cloud providers (gcp, aws, azure) where the first
-	// control plane node IP is used as the endpoint instead.
+	// VIP is the control plane endpoint. For on-prem providers this is
+	// a virtual IP managed by kube-vip. For cloud providers this can be
+	// a load balancer IP or DNS name. Optional for cloud providers where
+	// the first control plane node IP is used as the endpoint instead.
 	// +optional
-	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
 	VIP string `json:"vip,omitempty"`
 
 	// VIPInterface is the network interface for the VIP (optional, auto-detected)
