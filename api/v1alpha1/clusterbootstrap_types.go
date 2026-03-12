@@ -931,7 +931,7 @@ func (c *ClusterBootstrap) GetLoadBalancerAddressPool() string {
 // IsConsoleEnabled returns whether butler-console should be installed
 func (s *ClusterBootstrapAddonsSpec) IsConsoleEnabled() bool {
 	if s == nil || s.Console == nil || s.Console.Enabled == nil {
-		return false // Default disabled - user must opt-in
+		return true // Default enabled
 	}
 	return *s.Console.Enabled
 }
