@@ -323,6 +323,9 @@ const (
 
 	// FinalizerImageSync is the finalizer for ImageSync resources.
 	FinalizerImageSync = "butler.butlerlabs.dev/imagesync"
+
+	// FinalizerLoadBalancerRequest is the finalizer for LoadBalancerRequest resources.
+	FinalizerLoadBalancerRequest = "butler.butlerlabs.dev/loadbalancerrequest"
 )
 
 // Condition types following Kubernetes API conventions.
