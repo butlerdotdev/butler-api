@@ -41,14 +41,27 @@ const (
 	LoadBalancerPhaseDeleting LoadBalancerPhase = "Deleting"
 )
 
+// LoadBalancerRequest condition types.
+const (
+	// ConditionTypeLBProvisioned indicates the cloud LB resources are created.
+	ConditionTypeLBProvisioned = "Provisioned"
+
+	// ConditionTypeLBTargetsSynced indicates backends are registered with the LB.
+	ConditionTypeLBTargetsSynced = "TargetsSynced"
+)
+
 // LoadBalancerRequestSpec defines the desired state of a cloud load balancer
 // for a management cluster control plane endpoint.
+// +kubebuilder:validation:XValidation:rule="self.clusterName == oldSelf.clusterName",message="clusterName is immutable"
+// +kubebuilder:validation:XValidation:rule="self.providerConfigRef == oldSelf.providerConfigRef",message="providerConfigRef is immutable"
 type LoadBalancerRequestSpec struct {
 	// ClusterName is the name of the cluster this load balancer serves.
-	// Used as a prefix for cloud resource naming.
+	// Used as a prefix for cloud resource naming. Must be DNS-safe since
+	// cloud providers use it in resource names.
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
 	ClusterName string `json:"clusterName"`
 
 	// ProviderConfigRef references the ProviderConfig with cloud credentials.
@@ -182,7 +195,7 @@ func (lbr *LoadBalancerRequest) IsFailed() bool {
 
 // IsTerminating returns true if the load balancer is being deleted.
 func (lbr *LoadBalancerRequest) IsTerminating() bool {
-	return lbr.Status.Phase == LoadBalancerPhaseDeleting
+	return lbr.DeletionTimestamp != nil || lbr.Status.Phase == LoadBalancerPhaseDeleting
 }
 
 // SetPhase updates the phase and last updated timestamp.
