@@ -42,7 +42,7 @@ const (
 )
 
 // OSType defines the operating system for worker nodes.
-// +kubebuilder:validation:Enum=rocky;flatcar;talos
+// +kubebuilder:validation:Enum=rocky;flatcar;talos;kairos;bottlerocket
 type OSType string
 
 const (
@@ -54,6 +54,12 @@ const (
 
 	// OSTypeTalos is Talos Linux (immutable OS).
 	OSTypeTalos OSType = "talos"
+
+	// OSTypeKairos is Kairos (immutable, cloud-config based OS).
+	OSTypeKairos OSType = "kairos"
+
+	// OSTypeBottlerocket is Bottlerocket (immutable, TOML-configured OS).
+	OSTypeBottlerocket OSType = "bottlerocket"
 )
 
 // TenantClusterSpec defines the desired state of TenantCluster.
@@ -251,6 +257,12 @@ type OSSpec struct {
 	// +optional
 	SchematicID string `json:"schematicID,omitempty"`
 
+	// SSHAuthorizedKey overrides the platform default SSH public key for this cluster's workers.
+	// Only applies to non-Talos OS types (Flatcar, Bottlerocket).
+	// If empty, falls back to ButlerConfig.spec.sshAuthorizedKey.
+	// +optional
+	SSHAuthorizedKey string `json:"sshAuthorizedKey,omitempty"`
+
 	// Talos provides Talos-specific worker node configuration.
 	// Required when type is "talos".
 	// +optional
@@ -288,6 +300,10 @@ type InfrastructureOverride struct {
 	// Proxmox contains Proxmox-specific overrides.
 	// +optional
 	Proxmox *ProxmoxOverride `json:"proxmox,omitempty"`
+
+	// GCP contains GCP-specific overrides.
+	// +optional
+	GCP *GCPOverride `json:"gcp,omitempty"`
 }
 
 // HarvesterOverride contains Harvester-specific settings.
@@ -337,6 +353,29 @@ type ProxmoxOverride struct {
 	// TemplateID is the VM template ID.
 	// +optional
 	TemplateID int `json:"templateID,omitempty"`
+}
+
+// GCPOverride contains GCP-specific settings that can be overridden per-cluster.
+type GCPOverride struct {
+	// Zone overrides the default GCP compute zone.
+	// +optional
+	Zone string `json:"zone,omitempty"`
+
+	// MachineType overrides the default GCE machine type.
+	// +optional
+	MachineType string `json:"machineType,omitempty"`
+
+	// Image overrides the default image.
+	// +optional
+	Image string `json:"image,omitempty"`
+
+	// ImageFamily overrides the default image family.
+	// +optional
+	ImageFamily string `json:"imageFamily,omitempty"`
+
+	// Subnetwork overrides the default subnetwork.
+	// +optional
+	Subnetwork string `json:"subnetwork,omitempty"`
 }
 
 // NetworkingSpec configures cluster networking.

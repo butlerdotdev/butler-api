@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -117,8 +118,8 @@ type ControlPlaneExposureSpec struct {
 
 // ClusterBootstrapSpec defines the desired state of ClusterBootstrap
 type ClusterBootstrapSpec struct {
-	// Provider is the infrastructure provider type (harvester, nutanix, proxmox)
-	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox
+	// Provider is the infrastructure provider type.
+	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox;gcp;aws;azure
 	Provider string `json:"provider"`
 
 	// ProviderRef references the ProviderConfig to use for provisioning
@@ -229,12 +230,12 @@ type ClusterBootstrapNetworkSpec struct {
 	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$`
 	ServiceCIDR string `json:"serviceCIDR"`
 
-	// VIP is the virtual IP for the control plane endpoint (kube-vip)
-	// This IP is used ONLY for kube-apiserver HA and must NOT be in LoadBalancerPool
-	// For single-node topology, the VIP still provides a stable endpoint for the API server
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}$`
-	VIP string `json:"vip"`
+	// VIP is the control plane endpoint. For on-prem providers this is
+	// a virtual IP managed by kube-vip. For cloud providers this can be
+	// a load balancer IP or DNS name. Optional for cloud providers where
+	// the first control plane node IP is used as the endpoint instead.
+	// +optional
+	VIP string `json:"vip,omitempty"`
 
 	// VIPInterface is the network interface for the VIP (optional, auto-detected)
 	// +optional
@@ -324,22 +325,52 @@ func ipToUint32(ip net.IP) uint32 {
 	return binary.BigEndian.Uint32(ip)
 }
 
-// Validate validates the network configuration
-func (n *ClusterBootstrapNetworkSpec) Validate() error {
-	vip := net.ParseIP(n.VIP)
-	if vip == nil {
-		return fmt.Errorf("invalid VIP address: %s", n.VIP)
+// isValidEndpoint returns true if s is a valid IP address or RFC 1123 hostname.
+func isValidEndpoint(s string) bool {
+	if net.ParseIP(s) != nil {
+		return true
 	}
+	if len(s) == 0 || len(s) > 253 {
+		return false
+	}
+	for _, label := range strings.Split(s, ".") {
+		if len(label) == 0 || len(label) > 63 {
+			return false
+		}
+		for i, c := range label {
+			if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (c == '-' && i > 0 && i < len(label)-1)) {
+				return false
+			}
+		}
+	}
+	return true
+}
 
-	if n.LoadBalancerPool != nil {
-		if err := n.LoadBalancerPool.Validate(); err != nil {
-			return fmt.Errorf("invalid loadBalancerPool: %w", err)
+// Validate validates the network configuration.
+// VIP is optional for cloud providers where kube-vip is not used.
+// VIP may be an IP address (on-prem) or a DNS hostname (cloud LB endpoint).
+func (n *ClusterBootstrapNetworkSpec) Validate() error {
+	if n.VIP != "" {
+		if !isValidEndpoint(n.VIP) {
+			return fmt.Errorf("invalid VIP address or hostname: %s", n.VIP)
 		}
 
-		if n.LoadBalancerPool.ContainsIP(n.VIP) {
-			return fmt.Errorf("VIP %s must not be within loadBalancerPool range %s-%s; "+
-				"kube-vip and MetalLB will conflict if they share IPs",
-				n.VIP, n.LoadBalancerPool.Start, n.LoadBalancerPool.End)
+		if n.LoadBalancerPool != nil {
+			if err := n.LoadBalancerPool.Validate(); err != nil {
+				return fmt.Errorf("invalid loadBalancerPool: %w", err)
+			}
+
+			// Only check VIP/pool overlap for IP-based VIPs (on-prem with MetalLB).
+			// DNS-based VIPs (cloud LB endpoints) never overlap with MetalLB pools.
+			if net.ParseIP(n.VIP) != nil && n.LoadBalancerPool.ContainsIP(n.VIP) {
+				return fmt.Errorf("VIP %s must not be within loadBalancerPool range %s-%s; "+
+					"kube-vip and MetalLB will conflict if they share IPs",
+					n.VIP, n.LoadBalancerPool.Start, n.LoadBalancerPool.End)
+			}
+		}
+	} else if n.LoadBalancerPool != nil {
+		if err := n.LoadBalancerPool.Validate(); err != nil {
+			return fmt.Errorf("invalid loadBalancerPool: %w", err)
 		}
 	}
 
@@ -568,7 +599,7 @@ type CAPIAddonSpec struct {
 // CAPIInfraProviderSpec defines an infrastructure provider configuration
 type CAPIInfraProviderSpec struct {
 	// Name is the provider name
-	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox
+	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox;gcp;aws;azure
 	Name string `json:"name"`
 
 	// Version overrides the default provider version
@@ -768,6 +799,17 @@ func (c *ClusterBootstrap) IsSingleNode() bool {
 	return c.Spec.Cluster.Topology == ClusterTopologySingleNode
 }
 
+// IsCloudProvider returns true if the provider is a cloud provider (gcp, aws, azure).
+// Cloud providers skip kube-vip (no gratuitous ARP) and use the first control plane
+// node IP as the API server endpoint instead of a VIP.
+func (c *ClusterBootstrap) IsCloudProvider() bool {
+	switch c.Spec.Provider {
+	case "gcp", "aws", "azure":
+		return true
+	}
+	return false
+}
+
 // GetExpectedMachineCount returns the expected number of machines based on topology
 func (c *ClusterBootstrap) GetExpectedMachineCount() int {
 	if c.IsSingleNode() {
@@ -888,7 +930,7 @@ func (c *ClusterBootstrap) GetLoadBalancerAddressPool() string {
 // IsConsoleEnabled returns whether butler-console should be installed
 func (s *ClusterBootstrapAddonsSpec) IsConsoleEnabled() bool {
 	if s == nil || s.Console == nil || s.Console.Enabled == nil {
-		return false // Default disabled - user must opt-in
+		return true // Default enabled
 	}
 	return *s.Console.Enabled
 }

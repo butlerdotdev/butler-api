@@ -520,6 +520,12 @@ spec:
                         type: string
                     type: object
                 type: object
+              sshAuthorizedKey:
+                description: |-
+                  SSHAuthorizedKey is the default SSH public key injected into worker nodes
+                  for platform-level diagnostic access. Applied to non-Talos workers only.
+                  Can be overridden per-cluster via TenantCluster.spec.workers.machineTemplate.os.sshAuthorizedKey.
+                type: string
             type: object
           status:
             description: ButlerConfigStatus defines the observed state of ButlerConfig.
