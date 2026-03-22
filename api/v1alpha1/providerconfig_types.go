@@ -228,6 +228,17 @@ type AzureProviderConfig struct {
 	// SubnetName is the subnet within the VNet.
 	// +optional
 	SubnetName string `json:"subnetName,omitempty"`
+
+	// VMSize is the default Azure VM size (e.g., "Standard_D4s_v3").
+	// +optional
+	VMSize string `json:"vmSize,omitempty"`
+
+	// ImageURN is the VM image reference. Supports three formats:
+	// - URN: "publisher:offer:sku:version" (e.g., "Canonical:UbuntuServer:18.04-LTS:latest")
+	// - Managed image resource ID: "/subscriptions/.../images/my-image"
+	// - Shared gallery image ID: "/subscriptions/.../galleries/.../images/.../versions/..."
+	// +optional
+	ImageURN string `json:"imageURN,omitempty"`
 }
 
 // AWSProviderConfig contains AWS-specific configuration.
