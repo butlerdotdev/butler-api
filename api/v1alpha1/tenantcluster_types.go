@@ -671,13 +671,15 @@ type TenantClusterStatus struct {
 	// +optional
 	ObservedState *ObservedClusterState `json:"observedState,omitempty"`
 
-	// WorkerNodesReady is the count of ready worker nodes
+	// WorkerNodesReady is the count of ready worker nodes.
+	// Zero is a valid value (no omitempty) to distinguish "0 ready" from "not set".
 	// +optional
-	WorkerNodesReady int32 `json:"workerNodesReady,omitempty"`
+	WorkerNodesReady int32 `json:"workerNodesReady"`
 
-	// WorkerNodesDesired is the desired count of worker nodes
+	// WorkerNodesDesired is the desired count of worker nodes.
+	// Zero is a valid value (no omitempty) to distinguish "0 desired" from "not set".
 	// +optional
-	WorkerNodesDesired int32 `json:"workerNodesDesired,omitempty"`
+	WorkerNodesDesired int32 `json:"workerNodesDesired"`
 
 	// IPAllocationRef references the node IP allocation from IPAM.
 	// +optional

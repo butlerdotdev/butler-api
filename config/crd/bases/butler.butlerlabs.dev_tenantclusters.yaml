@@ -876,11 +876,15 @@ spec:
                   resources.
                 type: string
               workerNodesDesired:
-                description: WorkerNodesDesired is the desired count of worker nodes
+                description: |-
+                  WorkerNodesDesired is the desired count of worker nodes.
+                  Zero is a valid value (no omitempty) to distinguish "0 desired" from "not set".
                 format: int32
                 type: integer
               workerNodesReady:
-                description: WorkerNodesReady is the count of ready worker nodes
+                description: |-
+                  WorkerNodesReady is the count of ready worker nodes.
+                  Zero is a valid value (no omitempty) to distinguish "0 ready" from "not set".
                 format: int32
                 type: integer
             type: object
