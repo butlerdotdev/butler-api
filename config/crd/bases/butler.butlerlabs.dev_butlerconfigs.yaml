@@ -64,6 +64,26 @@ spec:
           spec:
             description: ButlerConfigSpec defines the desired state of ButlerConfig.
             properties:
+              audit:
+                description: Audit configures the platform audit log.
+                properties:
+                  bufferSize:
+                    default: 10000
+                    description: BufferSize is the in-memory ring buffer capacity
+                      for recent audit queries.
+                    format: int32
+                    maximum: 100000
+                    minimum: 100
+                    type: integer
+                  enabled:
+                    default: true
+                    description: Enabled controls whether audit logging is active.
+                    type: boolean
+                  webhookURL:
+                    description: WebhookURL is an optional URL to POST audit events
+                      to for SIEM integration.
+                    type: string
+                type: object
               controlPlaneExposure:
                 description: |-
                   ControlPlaneExposure configures how tenant control planes are exposed.

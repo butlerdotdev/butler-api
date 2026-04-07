@@ -101,6 +101,29 @@ type ButlerConfigSpec struct {
 	// Can be overridden per-cluster via TenantCluster.spec.workers.machineTemplate.os.sshAuthorizedKey.
 	// +optional
 	SSHAuthorizedKey string `json:"sshAuthorizedKey,omitempty"`
+
+	// Audit configures the platform audit log.
+	// +optional
+	Audit *AuditConfig `json:"audit,omitempty"`
+}
+
+// AuditConfig configures audit logging behavior.
+type AuditConfig struct {
+	// Enabled controls whether audit logging is active.
+	// +kubebuilder:default=true
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
+
+	// WebhookURL is an optional URL to POST audit events to for SIEM integration.
+	// +optional
+	WebhookURL string `json:"webhookURL,omitempty"`
+
+	// BufferSize is the in-memory ring buffer capacity for recent audit queries.
+	// +kubebuilder:default=10000
+	// +kubebuilder:validation:Minimum=100
+	// +kubebuilder:validation:Maximum=100000
+	// +optional
+	BufferSize *int32 `json:"bufferSize,omitempty"`
 }
 
 // MultiTenancyConfig configures multi-tenancy behavior.
@@ -332,6 +355,30 @@ func (c *ButlerConfig) IsAutoSyncEnabled() bool {
 		return true // default is true
 	}
 	return *c.Spec.ImageFactory.AutoSync
+}
+
+// IsAuditEnabled returns true if audit logging is enabled (default: true).
+func (c *ButlerConfig) IsAuditEnabled() bool {
+	if c.Spec.Audit == nil || c.Spec.Audit.Enabled == nil {
+		return true
+	}
+	return *c.Spec.Audit.Enabled
+}
+
+// GetAuditWebhookURL returns the audit webhook URL, or empty string if not configured.
+func (c *ButlerConfig) GetAuditWebhookURL() string {
+	if c.Spec.Audit == nil {
+		return ""
+	}
+	return c.Spec.Audit.WebhookURL
+}
+
+// GetAuditBufferSize returns the audit ring buffer capacity (default: 10000).
+func (c *ButlerConfig) GetAuditBufferSize() int32 {
+	if c.Spec.Audit == nil || c.Spec.Audit.BufferSize == nil {
+		return 10000
+	}
+	return *c.Spec.Audit.BufferSize
 }
 
 // ImageFactoryConfig configures the Butler Image Factory.
