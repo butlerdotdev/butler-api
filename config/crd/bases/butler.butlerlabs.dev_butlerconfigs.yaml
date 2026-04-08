@@ -445,6 +445,14 @@ spec:
                     - Disabled
                     type: string
                 type: object
+              notifications:
+                description: Notifications configures real-time notification forwarding.
+                properties:
+                  webhookURL:
+                    description: WebhookURL is an optional URL to POST notifications
+                      to (Slack, PagerDuty, Teams, etc).
+                    type: string
+                type: object
               observability:
                 description: Observability configures platform-level observability
                   (pipeline, collection defaults).
