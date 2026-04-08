@@ -105,6 +105,17 @@ type ButlerConfigSpec struct {
 	// Audit configures the platform audit log.
 	// +optional
 	Audit *AuditConfig `json:"audit,omitempty"`
+
+	// Notifications configures real-time notification forwarding.
+	// +optional
+	Notifications *NotificationsConfig `json:"notifications,omitempty"`
+}
+
+// NotificationsConfig configures notification forwarding.
+type NotificationsConfig struct {
+	// WebhookURL is an optional URL to POST notifications to (Slack, PagerDuty, Teams, etc).
+	// +optional
+	WebhookURL string `json:"webhookURL,omitempty"`
 }
 
 // AuditConfig configures audit logging behavior.
@@ -379,6 +390,14 @@ func (c *ButlerConfig) GetAuditBufferSize() int32 {
 		return 10000
 	}
 	return *c.Spec.Audit.BufferSize
+}
+
+// GetNotificationsWebhookURL returns the notifications webhook URL, or empty string if not configured.
+func (c *ButlerConfig) GetNotificationsWebhookURL() string {
+	if c.Spec.Notifications == nil {
+		return ""
+	}
+	return c.Spec.Notifications.WebhookURL
 }
 
 // ImageFactoryConfig configures the Butler Image Factory.
