@@ -307,6 +307,17 @@ const (
 	// enforce per-environment MaxClustersPerMember caps.
 	AnnotationCreatorEmail = "butler.butlerlabs.dev/creator-email"
 
+	// AnnotationMigrationOperation opts an update into bypass of
+	// normally-immutable TenantCluster fields. Today the admission
+	// webhook treats the LabelEnvironment label as immutable after
+	// create; updates that change the label must carry this annotation
+	// set to "true", which is the explicit signal that the update is a
+	// migration-tool operation (such as `butleradm env migrate`
+	// backfilling labels on existing clusters during phased rollout).
+	// Direct kubectl edits of the env label without the annotation are
+	// rejected.
+	AnnotationMigrationOperation = "butler.butlerlabs.dev/migration-operation"
+
 	// AnnotationConnect signals the controller to create/tear down the SSH service.
 	AnnotationConnect = "butler.butlerlabs.dev/connect"
 
