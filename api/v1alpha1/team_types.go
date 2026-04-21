@@ -112,13 +112,21 @@ type EnvironmentSpec struct {
 	ClusterDefaults *ClusterDefaults `json:"clusterDefaults,omitempty"`
 }
 
-// EnvironmentLimits extends TeamResourceLimits with a per-member cap.
-// Per-env limits are optional sub-caps within the Team ceiling. Sum of
-// env caps has no required relationship to Team total; over-provisioning
-// across environments is legal. Cluster creation validates three gates
-// in order: Team total, environment limits, MaxClustersPerMember.
+// EnvironmentLimits caps an environment's share of the Team ceiling.
+// v1 enforces cluster count and per-member cluster count only;
+// compute/storage/node caps continue to live on Team.spec.resourceLimits
+// and apply team-wide. Narrowing the env surface keeps operator mental
+// model simple and leaves the broader TeamResourceLimits fields for a
+// future iteration if a concrete need emerges. Cluster creation
+// validates two gates in order after the team ceiling: environment
+// MaxClusters, then MaxClustersPerMember.
 type EnvironmentLimits struct {
-	TeamResourceLimits `json:",inline"`
+	// MaxClusters caps how many TenantClusters can exist in this
+	// environment. Unset means no env-level cap; Team-level ceiling
+	// still applies.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	MaxClusters *int32 `json:"maxClusters,omitempty"`
 
 	// MaxClustersPerMember caps how many TenantClusters each individual
 	// Team member can own in this environment. Zero or unset means no

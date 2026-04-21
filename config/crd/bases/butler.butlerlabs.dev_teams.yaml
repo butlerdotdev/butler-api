@@ -303,68 +303,11 @@ spec:
                         still applies.
                         Team admins can edit this block. Platform admins can also edit.
                       properties:
-                        allowedAddons:
-                          description: |-
-                            AllowedAddons restricts which addons can be installed.
-                            If empty, all addons are allowed.
-                          items:
-                            type: string
-                          type: array
-                        allowedKubernetesVersions:
-                          description: |-
-                            AllowedKubernetesVersions restricts which K8s versions can be used.
-                            If empty, all supported versions are allowed.
-                          items:
-                            type: string
-                          type: array
-                        allowedProviders:
-                          description: |-
-                            AllowedProviders restricts which ProviderConfigs can be used.
-                            If empty, all providers the team has access to are allowed.
-                          items:
-                            type: string
-                          type: array
-                        defaultCPUPerNode:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          description: DefaultCPUPerNode is the default CPU cores
-                            per worker node.
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        defaultMemoryPerNode:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          description: DefaultMemoryPerNode is the default memory
-                            per worker node.
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        defaultNodeCount:
-                          default: 3
-                          description: DefaultNodeCount is the default worker count
-                            for new clusters.
-                          format: int32
-                          minimum: 0
-                          type: integer
-                        deniedAddons:
-                          description: |-
-                            DeniedAddons explicitly denies certain addons.
-                            Takes precedence over AllowedAddons.
-                          items:
-                            type: string
-                          type: array
-                        maxCPUCores:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          description: MaxCPUCores is the maximum total CPU cores
-                            across all clusters.
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
                         maxClusters:
-                          description: MaxClusters is the maximum number of TenantClusters
-                            this team can create.
+                          description: |-
+                            MaxClusters caps how many TenantClusters can exist in this
+                            environment. Unset means no env-level cap; Team-level ceiling
+                            still applies.
                           format: int32
                           minimum: 0
                           type: integer
@@ -375,34 +318,6 @@ spec:
                             cap. Enables personal sandbox patterns without a first-class
                             sandbox type: compose the effect from env access scoped to a
                             single member plus MaxClustersPerMember=1.
-                          format: int32
-                          minimum: 0
-                          type: integer
-                        maxMemory:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          description: MaxMemory is the maximum total memory across
-                            all clusters.
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        maxNodesPerCluster:
-                          description: MaxNodesPerCluster is the maximum worker nodes
-                            per cluster.
-                          format: int32
-                          minimum: 0
-                          type: integer
-                        maxStorage:
-                          anyOf:
-                          - type: integer
-                          - type: string
-                          description: MaxStorage is the maximum total storage across
-                            all clusters.
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        maxTotalNodes:
-                          description: MaxTotalNodes is the maximum total worker nodes
-                            across all clusters.
                           format: int32
                           minimum: 0
                           type: integer
