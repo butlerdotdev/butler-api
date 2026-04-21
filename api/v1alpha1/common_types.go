@@ -278,6 +278,18 @@ const (
 
 	// LabelImageArch identifies the image architecture for image sync deduplication.
 	LabelImageArch = "butler.butlerlabs.dev/image-arch"
+
+	// LabelEnvironment identifies the Team.spec.environments[] entry a
+	// TenantCluster belongs to. Required on every TenantCluster once the
+	// parent Team defines any environment. Absence is allowed only when
+	// the parent Team has no environments. Immutable after create.
+	LabelEnvironment = "butler.butlerlabs.dev/environment"
+
+	// LabelOwner identifies the email of the team member who created a
+	// TenantCluster. Used for MaxClustersPerMember enforcement in the
+	// TenantCluster admission webhook. Promoted from the
+	// AnnotationCreatorEmail annotation by the controller at create time.
+	LabelOwner = "butler.butlerlabs.dev/owner"
 )
 
 // Butler-specific annotations.
@@ -287,6 +299,13 @@ const (
 
 	// AnnotationCreatedBy indicates who created the resource.
 	AnnotationCreatedBy = "butler.butlerlabs.dev/created-by"
+
+	// AnnotationCreatorEmail is the email of the team member who submitted
+	// the create request. butler-server sets this on TenantClusters it
+	// creates. The controller promotes the value to the LabelOwner label
+	// at create time. Used by the TenantCluster admission webhook to
+	// enforce per-environment MaxClustersPerMember caps.
+	AnnotationCreatorEmail = "butler.butlerlabs.dev/creator-email"
 
 	// AnnotationConnect signals the controller to create/tear down the SSH service.
 	AnnotationConnect = "butler.butlerlabs.dev/connect"
