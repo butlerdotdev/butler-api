@@ -174,6 +174,253 @@ spec:
               displayName:
                 description: DisplayName is a human-readable name for the Team.
                 type: string
+              environments:
+                description: |-
+                  Environments defines logical groupings of TenantClusters within this Team
+                  (for example dev, stage, prod, per-user sandboxes, shared utilities).
+                  When any environment is defined, new TenantClusters in this Team must
+                  carry the butler.butlerlabs.dev/environment label set to a matching name.
+                  Existing unlabeled TenantClusters continue to work and count against the
+                  Team's total only; the butleradm env migrate command can backfill labels.
+                items:
+                  description: |-
+                    EnvironmentSpec defines an environment within a Team.
+                    Environments provide logical segmentation for lifecycle stages, per-user
+                    sandboxes, and shared utility clusters without a fixed taxonomy.
+                  properties:
+                    access:
+                      description: |-
+                        Access elevates Team members within this environment. Additive only:
+                        this block cannot reduce a Team-level role. Team admins retain admin
+                        regardless of what Access contains.
+                      properties:
+                        groups:
+                          description: |-
+                            Groups is a list of groups with access to this Team.
+                            Groups are matched against OIDC groups or AD groups.
+                          items:
+                            description: TeamGroup represents a group with access
+                              to a Team.
+                            properties:
+                              identityProvider:
+                                description: |-
+                                  IdentityProvider is the name of the IdentityProvider CRD this group comes from.
+                                  If specified, only users authenticating through this IdP will be matched.
+                                  If not specified, the group name will be matched against groups from any IdP.
+                                type: string
+                              name:
+                                description: |-
+                                  Name is the group identifier (OIDC group, AD group DN, etc.).
+                                  This can be the full DN for AD groups or simple names for OIDC.
+                                minLength: 1
+                                type: string
+                              role:
+                                default: viewer
+                                description: |-
+                                  Role is the group's role within the Team.
+                                  All members of the group inherit this role.
+                                enum:
+                                - admin
+                                - operator
+                                - viewer
+                                type: string
+                            required:
+                            - name
+                            type: object
+                          type: array
+                        users:
+                          description: |-
+                            Users is a list of users with access to this Team.
+                            Users are identified by their email address.
+                          items:
+                            description: TeamUser represents a user with access to
+                              a Team.
+                            properties:
+                              name:
+                                description: |-
+                                  Name is the user identifier (email address).
+                                  For internal users, this is the email from User.spec.email.
+                                  For SSO users, this is the email from the OIDC token.
+                                minLength: 1
+                                type: string
+                              role:
+                                default: viewer
+                                description: Role is the user's role within the Team.
+                                enum:
+                                - admin
+                                - operator
+                                - viewer
+                                type: string
+                            required:
+                            - name
+                            type: object
+                          type: array
+                      type: object
+                    clusterDefaults:
+                      description: |-
+                        ClusterDefaults apply when a TenantCluster is created in this
+                        environment and does not set the field itself. Environment defaults
+                        win over Team-level ClusterDefaults on conflicts.
+                      properties:
+                        defaultAddons:
+                          description: DefaultAddons are addons automatically installed
+                            on new clusters.
+                          items:
+                            type: string
+                          type: array
+                        kubernetesVersion:
+                          description: KubernetesVersion is the default K8s version
+                            for new clusters.
+                          type: string
+                        workerCPU:
+                          description: WorkerCPU is the default CPU cores per worker.
+                          format: int32
+                          minimum: 1
+                          type: integer
+                        workerCount:
+                          description: WorkerCount is the default number of worker
+                            nodes.
+                          format: int32
+                          minimum: 0
+                          type: integer
+                        workerDiskGi:
+                          description: WorkerDiskGi is the default disk size per worker
+                            in Gi.
+                          format: int32
+                          minimum: 10
+                          type: integer
+                        workerMemoryGi:
+                          description: WorkerMemoryGi is the default memory per worker
+                            in Gi.
+                          format: int32
+                          minimum: 1
+                          type: integer
+                      type: object
+                    limits:
+                      description: |-
+                        Limits optionally caps this environment's usage within the Team
+                        ceiling. Unset means no environment-level cap; Team-level cap
+                        still applies.
+                        Team admins can edit this block. Platform admins can also edit.
+                      properties:
+                        allowedAddons:
+                          description: |-
+                            AllowedAddons restricts which addons can be installed.
+                            If empty, all addons are allowed.
+                          items:
+                            type: string
+                          type: array
+                        allowedKubernetesVersions:
+                          description: |-
+                            AllowedKubernetesVersions restricts which K8s versions can be used.
+                            If empty, all supported versions are allowed.
+                          items:
+                            type: string
+                          type: array
+                        allowedProviders:
+                          description: |-
+                            AllowedProviders restricts which ProviderConfigs can be used.
+                            If empty, all providers the team has access to are allowed.
+                          items:
+                            type: string
+                          type: array
+                        defaultCPUPerNode:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: DefaultCPUPerNode is the default CPU cores
+                            per worker node.
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        defaultMemoryPerNode:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: DefaultMemoryPerNode is the default memory
+                            per worker node.
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        defaultNodeCount:
+                          default: 3
+                          description: DefaultNodeCount is the default worker count
+                            for new clusters.
+                          format: int32
+                          minimum: 0
+                          type: integer
+                        deniedAddons:
+                          description: |-
+                            DeniedAddons explicitly denies certain addons.
+                            Takes precedence over AllowedAddons.
+                          items:
+                            type: string
+                          type: array
+                        maxCPUCores:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: MaxCPUCores is the maximum total CPU cores
+                            across all clusters.
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        maxClusters:
+                          description: MaxClusters is the maximum number of TenantClusters
+                            this team can create.
+                          format: int32
+                          minimum: 0
+                          type: integer
+                        maxClustersPerMember:
+                          description: |-
+                            MaxClustersPerMember caps how many TenantClusters each individual
+                            Team member can own in this environment. Zero or unset means no
+                            cap. Enables personal sandbox patterns without a first-class
+                            sandbox type: compose the effect from env access scoped to a
+                            single member plus MaxClustersPerMember=1.
+                          format: int32
+                          minimum: 0
+                          type: integer
+                        maxMemory:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: MaxMemory is the maximum total memory across
+                            all clusters.
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        maxNodesPerCluster:
+                          description: MaxNodesPerCluster is the maximum worker nodes
+                            per cluster.
+                          format: int32
+                          minimum: 0
+                          type: integer
+                        maxStorage:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: MaxStorage is the maximum total storage across
+                            all clusters.
+                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                          x-kubernetes-int-or-string: true
+                        maxTotalNodes:
+                          description: MaxTotalNodes is the maximum total worker nodes
+                            across all clusters.
+                          format: int32
+                          minimum: 0
+                          type: integer
+                      type: object
+                    name:
+                      description: |-
+                        Name is the environment name, operator-chosen. Free-form string.
+                        Used as the value of the butler.butlerlabs.dev/environment label
+                        on TenantClusters that belong to this environment.
+                      minLength: 1
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               providerConfigRef:
                 description: |-
                   ProviderConfigRef references a Team-specific ProviderConfig.
