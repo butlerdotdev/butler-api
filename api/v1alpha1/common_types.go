@@ -284,12 +284,6 @@ const (
 	// parent Team defines any environment. Absence is allowed only when
 	// the parent Team has no environments. Immutable after create.
 	LabelEnvironment = "butler.butlerlabs.dev/environment"
-
-	// LabelOwner identifies the email of the team member who created a
-	// TenantCluster. Used for MaxClustersPerMember enforcement in the
-	// TenantCluster admission webhook. Promoted from the
-	// AnnotationCreatorEmail annotation by the controller at create time.
-	LabelOwner = "butler.butlerlabs.dev/owner"
 )
 
 // Butler-specific annotations.
@@ -302,10 +296,21 @@ const (
 
 	// AnnotationCreatorEmail is the email of the team member who submitted
 	// the create request. butler-server sets this on TenantClusters it
-	// creates. The controller promotes the value to the LabelOwner label
-	// at create time. Used by the TenantCluster admission webhook to
-	// enforce per-environment MaxClustersPerMember caps.
+	// creates. The TenantCluster admission webhook validates that this
+	// value matches the requesting UserInfo.Username to prevent spoofing,
+	// and counts siblings by this annotation for per-environment
+	// MaxClustersPerMember enforcement.
 	AnnotationCreatorEmail = "butler.butlerlabs.dev/creator-email"
+
+	// AnnotationOwner identifies the authoritative owner email for a
+	// TenantCluster. Set by the controller from AnnotationCreatorEmail
+	// and used for per-member cap accounting and CAPI resource
+	// ownership tracking. Stored as an annotation rather than a label
+	// because email addresses contain "@", which is not a valid
+	// Kubernetes label-value character. Selectors that need an
+	// email-safe key should derive one (hash or DNS-1123 normalized
+	// form) in a follow-up; v1 relies on annotation reads.
+	AnnotationOwner = "butler.butlerlabs.dev/owner"
 
 	// AnnotationMigrationOperation opts an update into bypass of
 	// normally-immutable TenantCluster fields. Today the admission
