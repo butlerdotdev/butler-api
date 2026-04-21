@@ -85,11 +85,15 @@ type TeamSpec struct {
 // Environments provide logical segmentation for lifecycle stages, per-user
 // sandboxes, and shared utility clusters without a fixed taxonomy.
 type EnvironmentSpec struct {
-	// Name is the environment name, operator-chosen. Free-form string.
-	// Used as the value of the butler.butlerlabs.dev/environment label
-	// on TenantClusters that belong to this environment.
+	// Name is the environment name, operator-chosen. Used as the value
+	// of the butler.butlerlabs.dev/environment label on TenantClusters
+	// in this environment, so the pattern must match Kubernetes
+	// label-value syntax: alphanumeric plus "-" "_" "." with
+	// alphanumeric anchors on both ends, up to 63 characters.
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?$`
 	Name string `json:"name"`
 
 	// Limits optionally caps this environment's usage within the Team

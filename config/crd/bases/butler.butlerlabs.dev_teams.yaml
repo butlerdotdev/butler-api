@@ -324,10 +324,14 @@ spec:
                       type: object
                     name:
                       description: |-
-                        Name is the environment name, operator-chosen. Free-form string.
-                        Used as the value of the butler.butlerlabs.dev/environment label
-                        on TenantClusters that belong to this environment.
+                        Name is the environment name, operator-chosen. Used as the value
+                        of the butler.butlerlabs.dev/environment label on TenantClusters
+                        in this environment, so the pattern must match Kubernetes
+                        label-value syntax: alphanumeric plus "-" "_" "." with
+                        alphanumeric anchors on both ends, up to 63 characters.
+                      maxLength: 63
                       minLength: 1
+                      pattern: ^[A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?$
                       type: string
                   required:
                   - name
