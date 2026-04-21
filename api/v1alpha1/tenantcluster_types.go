@@ -764,6 +764,12 @@ const (
 
 	// TenantClusterConditionImageReady indicates the OS image is synced to the provider.
 	TenantClusterConditionImageReady = "ImageReady"
+
+	// TenantClusterConditionQuotaSatisfied indicates the cluster fits within
+	// the Team's ceiling and, when applicable, within per-environment limits
+	// and the per-member cap. Set False with reason ReasonQuotaExceeded,
+	// ReasonEnvQuotaExceeded, or ReasonPerMemberCapExceeded on denial.
+	TenantClusterConditionQuotaSatisfied = "QuotaSatisfied"
 )
 
 // +kubebuilder:object:root=true
