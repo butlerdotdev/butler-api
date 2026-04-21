@@ -306,8 +306,8 @@ spec:
                         maxClusters:
                           description: |-
                             MaxClusters caps how many TenantClusters can exist in this
-                            environment. Unset means no env-level cap; Team-level ceiling
-                            still applies.
+                            environment. Zero or unset means no env-level cap; the Team
+                            ceiling still applies.
                           format: int32
                           minimum: 0
                           type: integer

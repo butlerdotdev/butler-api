@@ -126,8 +126,8 @@ type EnvironmentSpec struct {
 // MaxClusters, then MaxClustersPerMember.
 type EnvironmentLimits struct {
 	// MaxClusters caps how many TenantClusters can exist in this
-	// environment. Unset means no env-level cap; Team-level ceiling
-	// still applies.
+	// environment. Zero or unset means no env-level cap; the Team
+	// ceiling still applies.
 	// +optional
 	// +kubebuilder:validation:Minimum=0
 	MaxClusters *int32 `json:"maxClusters,omitempty"`
