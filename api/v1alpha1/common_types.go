@@ -418,6 +418,16 @@ const (
 	// ReasonQuotaExceeded indicates a resource quota was exceeded.
 	ReasonQuotaExceeded = "QuotaExceeded"
 
+	// ReasonEnvQuotaExceeded indicates a Team environment-level quota
+	// was exceeded. Distinct from ReasonQuotaExceeded which covers the
+	// Team-total ceiling set by platform admins.
+	ReasonEnvQuotaExceeded = "EnvQuotaExceeded"
+
+	// ReasonPerMemberCapExceeded indicates the requesting member would
+	// exceed Team.spec.environments[].limits.maxClustersPerMember in
+	// the target environment.
+	ReasonPerMemberCapExceeded = "PerMemberCapExceeded"
+
 	// ReasonPoolExhausted indicates a NetworkPool has no available IPs.
 	ReasonPoolExhausted = "PoolExhausted"
 
