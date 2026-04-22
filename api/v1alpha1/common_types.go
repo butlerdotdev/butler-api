@@ -278,6 +278,12 @@ const (
 
 	// LabelImageArch identifies the image architecture for image sync deduplication.
 	LabelImageArch = "butler.butlerlabs.dev/image-arch"
+
+	// LabelEnvironment identifies the Team.spec.environments[] entry a
+	// TenantCluster belongs to. Required on every TenantCluster once the
+	// parent Team defines any environment. Absence is allowed only when
+	// the parent Team has no environments. Immutable after create.
+	LabelEnvironment = "butler.butlerlabs.dev/environment"
 )
 
 // Butler-specific annotations.
@@ -287,6 +293,35 @@ const (
 
 	// AnnotationCreatedBy indicates who created the resource.
 	AnnotationCreatedBy = "butler.butlerlabs.dev/created-by"
+
+	// AnnotationCreatorEmail is the email of the team member who submitted
+	// the create request. butler-server sets this on TenantClusters it
+	// creates. The TenantCluster admission webhook validates that this
+	// value matches the requesting UserInfo.Username to prevent spoofing,
+	// and counts siblings by this annotation for per-environment
+	// MaxClustersPerMember enforcement.
+	AnnotationCreatorEmail = "butler.butlerlabs.dev/creator-email"
+
+	// AnnotationOwner identifies the authoritative owner email for a
+	// TenantCluster. Set by the controller from AnnotationCreatorEmail
+	// and used for per-member cap accounting and CAPI resource
+	// ownership tracking. Stored as an annotation rather than a label
+	// because email addresses contain "@", which is not a valid
+	// Kubernetes label-value character. Selectors that need an
+	// email-safe key should derive one (hash or DNS-1123 normalized
+	// form) in a follow-up; v1 relies on annotation reads.
+	AnnotationOwner = "butler.butlerlabs.dev/owner"
+
+	// AnnotationMigrationOperation opts an update into bypass of
+	// normally-immutable TenantCluster fields. Today the admission
+	// webhook treats the LabelEnvironment label as immutable after
+	// create; updates that change the label must carry this annotation
+	// set to "true", which is the explicit signal that the update is a
+	// migration-tool operation (such as `butleradm env migrate`
+	// backfilling labels on existing clusters during phased rollout).
+	// Direct kubectl edits of the env label without the annotation are
+	// rejected.
+	AnnotationMigrationOperation = "butler.butlerlabs.dev/migration-operation"
 
 	// AnnotationConnect signals the controller to create/tear down the SSH service.
 	AnnotationConnect = "butler.butlerlabs.dev/connect"
@@ -387,6 +422,16 @@ const (
 
 	// ReasonQuotaExceeded indicates a resource quota was exceeded.
 	ReasonQuotaExceeded = "QuotaExceeded"
+
+	// ReasonEnvQuotaExceeded indicates a Team environment-level quota
+	// was exceeded. Distinct from ReasonQuotaExceeded which covers the
+	// Team-total ceiling set by platform admins.
+	ReasonEnvQuotaExceeded = "EnvQuotaExceeded"
+
+	// ReasonPerMemberCapExceeded indicates the requesting member would
+	// exceed Team.spec.environments[].limits.maxClustersPerMember in
+	// the target environment.
+	ReasonPerMemberCapExceeded = "PerMemberCapExceeded"
 
 	// ReasonPoolExhausted indicates a NetworkPool has no available IPs.
 	ReasonPoolExhausted = "PoolExhausted"

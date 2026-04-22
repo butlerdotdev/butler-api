@@ -68,6 +68,84 @@ type TeamSpec struct {
 	// ClusterDefaults defines default values for new clusters in this team.
 	// +optional
 	ClusterDefaults *ClusterDefaults `json:"clusterDefaults,omitempty"`
+
+	// Environments defines logical groupings of TenantClusters within this Team
+	// (for example dev, stage, prod, per-user sandboxes, shared utilities).
+	// When any environment is defined, new TenantClusters in this Team must
+	// carry the butler.butlerlabs.dev/environment label set to a matching name.
+	// Existing unlabeled TenantClusters continue to work and count against the
+	// Team's total only; the butleradm env migrate command can backfill labels.
+	// +optional
+	// +listType=map
+	// +listMapKey=name
+	Environments []EnvironmentSpec `json:"environments,omitempty"`
+}
+
+// EnvironmentSpec defines an environment within a Team.
+// Environments provide logical segmentation for lifecycle stages, per-user
+// sandboxes, and shared utility clusters without a fixed taxonomy.
+type EnvironmentSpec struct {
+	// Name is the environment name, operator-chosen. Used as the value
+	// of the butler.butlerlabs.dev/environment label on TenantClusters
+	// in this environment, so the pattern must match Kubernetes
+	// label-value syntax: alphanumeric plus "-" "_" "." with
+	// alphanumeric anchors on both ends, up to 63 characters.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?$`
+	Name string `json:"name"`
+
+	// Description is a free-text blurb describing the environment's
+	// purpose. Surfaced in the console env list and cluster context;
+	// not interpreted anywhere in the controller or webhook.
+	// +optional
+	Description string `json:"description,omitempty"`
+
+	// Limits optionally caps this environment's usage within the Team
+	// ceiling. Unset means no environment-level cap; Team-level cap
+	// still applies.
+	// Team admins can edit this block. Platform admins can also edit.
+	// +optional
+	Limits *EnvironmentLimits `json:"limits,omitempty"`
+
+	// Access elevates Team members within this environment. Additive only:
+	// this block cannot reduce a Team-level role. Team admins retain admin
+	// regardless of what Access contains.
+	// +optional
+	Access *TeamAccess `json:"access,omitempty"`
+
+	// ClusterDefaults apply when a TenantCluster is created in this
+	// environment and does not set the field itself. Environment defaults
+	// win over Team-level ClusterDefaults on conflicts.
+	// +optional
+	ClusterDefaults *ClusterDefaults `json:"clusterDefaults,omitempty"`
+}
+
+// EnvironmentLimits caps an environment's share of the Team ceiling.
+// v1 enforces cluster count and per-member cluster count only;
+// compute/storage/node caps continue to live on Team.spec.resourceLimits
+// and apply team-wide. Narrowing the env surface keeps operator mental
+// model simple and leaves the broader TeamResourceLimits fields for a
+// future iteration if a concrete need emerges. Cluster creation
+// validates two gates in order after the team ceiling: environment
+// MaxClusters, then MaxClustersPerMember.
+type EnvironmentLimits struct {
+	// MaxClusters caps how many TenantClusters can exist in this
+	// environment. Zero or unset means no env-level cap; the Team
+	// ceiling still applies.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	MaxClusters *int32 `json:"maxClusters,omitempty"`
+
+	// MaxClustersPerMember caps how many TenantClusters each individual
+	// Team member can own in this environment. Zero or unset means no
+	// cap. Enables personal sandbox patterns without a first-class
+	// sandbox type: compose the effect from env access scoped to a
+	// single member plus MaxClustersPerMember=1.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	MaxClustersPerMember *int32 `json:"maxClustersPerMember,omitempty"`
 }
 
 // ClusterDefaults defines default values for new TenantClusters.
