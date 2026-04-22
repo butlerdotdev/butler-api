@@ -296,6 +296,12 @@ spec:
                           minimum: 1
                           type: integer
                       type: object
+                    description:
+                      description: |-
+                        Description is a free-text blurb describing the environment's
+                        purpose. Surfaced in the console env list and cluster context;
+                        not interpreted anywhere in the controller or webhook.
+                      type: string
                     limits:
                       description: |-
                         Limits optionally caps this environment's usage within the Team

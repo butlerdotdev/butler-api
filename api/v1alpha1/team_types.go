@@ -96,6 +96,12 @@ type EnvironmentSpec struct {
 	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?$`
 	Name string `json:"name"`
 
+	// Description is a free-text blurb describing the environment's
+	// purpose. Surfaced in the console env list and cluster context;
+	// not interpreted anywhere in the controller or webhook.
+	// +optional
+	Description string `json:"description,omitempty"`
+
 	// Limits optionally caps this environment's usage within the Team
 	// ceiling. Unset means no environment-level cap; Team-level cap
 	// still applies.
