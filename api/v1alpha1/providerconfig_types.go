@@ -362,6 +362,12 @@ type ProviderNetworkConfig struct {
 	// +optional
 	DNSServers []string `json:"dnsServers,omitempty"`
 
+	// TimeServers are the default NTP servers for Talos worker nodes on this provider.
+	// Falls back to ButlerConfig.spec.defaultTimeServers if empty.
+	// Required on networks where the Talos default (time.cloudflare.com) is unreachable.
+	// +optional
+	TimeServers []string `json:"timeServers,omitempty"`
+
 	// LoadBalancer configures load balancer IP allocation defaults.
 	// +optional
 	LoadBalancer *ProviderLBConfig `json:"loadBalancer,omitempty"`

@@ -344,6 +344,15 @@ spec:
                     minimum: 1
                     type: integer
                 type: object
+              defaultTimeServers:
+                description: |-
+                  DefaultTimeServers are the platform-wide default NTP servers for Talos worker nodes.
+                  Can be overridden per-provider via ProviderConfig.spec.network.timeServers
+                  or per-cluster via TenantCluster.spec.timeServers.
+                  If empty, falls back to pool.ntp.org.
+                items:
+                  type: string
+                type: array
               gitProvider:
                 description: |-
                   GitProvider configures the default Git provider for GitOps operations.

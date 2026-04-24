@@ -534,6 +534,15 @@ spec:
                 required:
                 - name
                 type: object
+              timeServers:
+                description: |-
+                  TimeServers overrides the NTP servers used by Talos worker nodes.
+                  If empty, falls back to ProviderConfig.spec.network.timeServers,
+                  then ButlerConfig.spec.defaultTimeServers, then pool.ntp.org.
+                  Required on networks where the Talos default (time.cloudflare.com) is unreachable.
+                items:
+                  type: string
+                type: array
               workers:
                 description: Workers configures the worker nodes.
                 properties:
