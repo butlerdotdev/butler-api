@@ -102,6 +102,13 @@ type ButlerConfigSpec struct {
 	// +optional
 	SSHAuthorizedKey string `json:"sshAuthorizedKey,omitempty"`
 
+	// DefaultTimeServers are the platform-wide default NTP servers for Talos worker nodes.
+	// Can be overridden per-provider via ProviderConfig.spec.network.timeServers
+	// or per-cluster via TenantCluster.spec.timeServers.
+	// If empty, falls back to pool.ntp.org.
+	// +optional
+	DefaultTimeServers []string `json:"defaultTimeServers,omitempty"`
+
 	// Audit configures the platform audit log.
 	// +optional
 	Audit *AuditConfig `json:"audit,omitempty"`
@@ -398,6 +405,15 @@ func (c *ButlerConfig) GetNotificationsWebhookURL() string {
 		return ""
 	}
 	return c.Spec.Notifications.WebhookURL
+}
+
+// GetDefaultTimeServers returns the platform-wide default NTP servers.
+// Returns nil if not configured (caller should fall back to pool.ntp.org).
+func (c *ButlerConfig) GetDefaultTimeServers() []string {
+	if c == nil {
+		return nil
+	}
+	return c.Spec.DefaultTimeServers
 }
 
 // ImageFactoryConfig configures the Butler Image Factory.

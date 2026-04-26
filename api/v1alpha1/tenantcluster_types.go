@@ -102,6 +102,13 @@ type TenantClusterSpec struct {
 	// +optional
 	Addons AddonsSpec `json:"addons,omitempty"`
 
+	// TimeServers overrides the NTP servers used by Talos worker nodes.
+	// If empty, falls back to ProviderConfig.spec.network.timeServers,
+	// then ButlerConfig.spec.defaultTimeServers, then pool.ntp.org.
+	// Required on networks where the Talos default (time.cloudflare.com) is unreachable.
+	// +optional
+	TimeServers []string `json:"timeServers,omitempty"`
+
 	// InfrastructureOverride allows overriding provider-specific settings.
 	// These take precedence over ProviderConfig defaults.
 	// +optional

@@ -447,6 +447,11 @@ func (in *ButlerConfigSpec) DeepCopyInto(out *ButlerConfigSpec) {
 		*out = new(ImageFactoryConfig)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.DefaultTimeServers != nil {
+		in, out := &in.DefaultTimeServers, &out.DefaultTimeServers
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Audit != nil {
 		in, out := &in.Audit, &out.Audit
 		*out = new(AuditConfig)
@@ -3139,6 +3144,11 @@ func (in *ProviderNetworkConfig) DeepCopyInto(out *ProviderNetworkConfig) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.TimeServers != nil {
+		in, out := &in.TimeServers, &out.TimeServers
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.LoadBalancer != nil {
 		in, out := &in.LoadBalancer, &out.LoadBalancer
 		*out = new(ProviderLBConfig)
@@ -3938,6 +3948,11 @@ func (in *TenantClusterSpec) DeepCopyInto(out *TenantClusterSpec) {
 	in.Networking.DeepCopyInto(&out.Networking)
 	out.ManagementPolicy = in.ManagementPolicy
 	in.Addons.DeepCopyInto(&out.Addons)
+	if in.TimeServers != nil {
+		in, out := &in.TimeServers, &out.TimeServers
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.InfrastructureOverride != nil {
 		in, out := &in.InfrastructureOverride, &out.InfrastructureOverride
 		*out = new(InfrastructureOverride)
