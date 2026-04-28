@@ -527,19 +527,34 @@ type StorageSpec struct {
 
 // IngressSpec configures the ingress controller.
 type IngressSpec struct {
+	// Enabled controls whether the ingress controller is installed on the tenant cluster.
+	// Defaults to true. Set to false to skip ingress controller installation (saves 1 LB IP).
+	// +optional
+	// +kubebuilder:default=true
+	Enabled *bool `json:"enabled,omitempty"`
+
 	// Provider is the ingress provider.
 	// +kubebuilder:validation:Enum=traefik;nginx
 	// +optional
 	Provider string `json:"provider,omitempty"`
 
-	// Version is the addon version.
-	// +kubebuilder:validation:Required
-	Version string `json:"version"`
+	// Version is the addon version. Defaults to the controller's built-in version when omitted.
+	// +optional
+	Version string `json:"version,omitempty"`
 
 	// Values are Helm values for customization.
 	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Values *ExtensionValues `json:"values,omitempty"`
+}
+
+// IsIngressEnabled returns whether the ingress controller should be installed.
+// Returns true when the spec is nil or when Enabled is nil (default behavior).
+func (s *IngressSpec) IsIngressEnabled() bool {
+	if s == nil || s.Enabled == nil {
+		return true
+	}
+	return *s.Enabled
 }
 
 // GitOpsSpec configures GitOps tooling.
