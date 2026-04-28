@@ -284,6 +284,11 @@ const (
 	// parent Team defines any environment. Absence is allowed only when
 	// the parent Team has no environments. Immutable after create.
 	LabelEnvironment = "butler.butlerlabs.dev/environment"
+
+	// LabelPlatformLB identifies LoadBalancer services managed by butler platform
+	// addons (e.g., Traefik ingress controller). These are excluded from elastic
+	// IPAM usage counting since they are infrastructure, not tenant workload LBs.
+	LabelPlatformLB = "butler.butlerlabs.dev/platform-lb"
 )
 
 // Butler-specific annotations.
