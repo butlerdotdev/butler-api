@@ -303,8 +303,10 @@ func (u *User) IsPlatformAdmin() bool {
 	return u.Spec.IsPlatformAdmin || u.Spec.PlatformRole == "admin"
 }
 
-// GetEffectivePlatformRole returns the effective platform role for this user,
-// accounting for both the deprecated IsPlatformAdmin field and PlatformRole.
+// GetEffectivePlatformRole returns the effective platform role for this user.
+// When both PlatformRole and the deprecated IsPlatformAdmin are set, the
+// higher role wins: IsPlatformAdmin=true is treated as "admin", which
+// overrides PlatformRole="viewer".
 func (u *User) GetEffectivePlatformRole() string {
 	if u.Spec.PlatformRole == "admin" || u.Spec.IsPlatformAdmin {
 		return "admin"
