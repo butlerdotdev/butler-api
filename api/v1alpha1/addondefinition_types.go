@@ -41,6 +41,18 @@ const (
 	AddonCategoryOther         AddonCategory = "other"
 )
 
+// AddonTier controls which directory an addon is placed in during
+// GitOps export. Infrastructure-tier addons provide CRDs or platform
+// prerequisites that other addons depend on. Apps-tier addons are
+// regular workloads. See ADR-015 for design rationale.
+// +kubebuilder:validation:Enum=infrastructure;apps
+type AddonTier string
+
+const (
+	AddonTierInfrastructure AddonTier = "infrastructure"
+	AddonTierApps           AddonTier = "apps"
+)
+
 // AddonDefinitionSpec defines the desired state of AddonDefinition.
 // An AddonDefinition is a cluster-scoped resource that defines an addon
 // available for installation in tenant clusters.
@@ -81,6 +93,17 @@ type AddonDefinitionSpec struct {
 	// +kubebuilder:default=false
 	// +optional
 	Platform bool `json:"platform,omitempty"`
+
+	// Tier controls which directory the addon is placed in during GitOps
+	// export: "infrastructure" or "apps". Infrastructure-tier addons
+	// provide CRDs or platform prerequisites that must exist before
+	// workloads that consume them. When set, this takes precedence over
+	// the Platform field for directory placement. When empty, inferred
+	// from Platform: platform addons default to "infrastructure",
+	// non-platform addons default to "apps".
+	// See ADR-015 for design rationale. Tracked in butler-controller#79.
+	// +optional
+	Tier AddonTier `json:"tier,omitempty"`
 
 	// DependsOn lists addon names that must be installed first.
 	// The TenantAddon controller will wait for these dependencies
@@ -234,4 +257,18 @@ func (a *AddonDefinition) IsBuiltIn() bool {
 		return false
 	}
 	return a.Labels["butler.butlerlabs.dev/source"] == "builtin"
+}
+
+// GetEffectiveTier returns the GitOps directory tier for this addon.
+// When Tier is set explicitly, it takes precedence. Otherwise, the
+// tier is inferred from Platform: platform addons are "infrastructure",
+// non-platform addons are "apps".
+func (a *AddonDefinition) GetEffectiveTier() string {
+	if a.Spec.Tier != "" {
+		return string(a.Spec.Tier)
+	}
+	if a.Spec.Platform {
+		return string(AddonTierInfrastructure)
+	}
+	return string(AddonTierApps)
 }
