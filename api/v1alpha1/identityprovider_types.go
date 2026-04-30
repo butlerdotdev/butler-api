@@ -61,6 +61,28 @@ type IdentityProviderSpec struct {
 	// Required when type is "oidc".
 	// +optional
 	OIDC *OIDCConfig `json:"oidc,omitempty"`
+
+	// PlatformRoleGroups maps IdP groups to platform-wide roles.
+	// Group names are matched using the same normalization as
+	// Team.spec.access.groups (LDAP DN, email-style, and plain
+	// names are all supported). When a user belongs to multiple
+	// matching groups, the highest role wins.
+	// +optional
+	PlatformRoleGroups []PlatformRoleGroupEntry `json:"platformRoleGroups,omitempty"`
+}
+
+// PlatformRoleGroupEntry maps an IdP group to a platform-wide role.
+type PlatformRoleGroupEntry struct {
+	// Name is the group identifier as it appears in the OIDC token's
+	// groups claim.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+
+	// Role is the platform role to grant members of this group.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=admin;viewer
+	Role string `json:"role"`
 }
 
 // OIDCConfig contains OpenID Connect provider configuration.

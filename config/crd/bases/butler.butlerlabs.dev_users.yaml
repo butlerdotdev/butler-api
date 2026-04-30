@@ -58,9 +58,13 @@ spec:
           5. Password is hashed (bcrypt) and stored in a Secret
           6. User status changes from Pending to Active
 
-          Platform Admin:
-          Users with spec.isPlatformAdmin=true have full platform access,
-          bypassing team-based RBAC. This should be used sparingly.
+          Platform Roles:
+          Users with spec.platformRole="admin" (or the deprecated
+          spec.isPlatformAdmin=true) have full platform access, bypassing
+          team-based RBAC. Users with spec.platformRole="viewer" have
+          read-only access across all teams and clusters. Platform roles
+          can also be assigned via IdP group mapping on the IdentityProvider
+          CRD (spec.platformRoleGroups).
         properties:
           apiVersion:
             description: |-
@@ -113,12 +117,24 @@ spec:
                 default: false
                 description: |-
                   IsPlatformAdmin grants full platform access, bypassing team-based RBAC.
-                  Platform admins can:
-                  - Manage all teams, users, clusters, and providers
-                  - Access all resources regardless of team membership
-                  - Configure platform-wide settings
-                  Use sparingly - most users should use team-based access control.
+                  Deprecated: use PlatformRole instead. When true, treated as
+                  PlatformRole "admin" internally. Both fields are honored; the
+                  effective role is the higher of the two. Removal targeted for
+                  v1.0.0 after butler-console and butler-cli migrate to PlatformRole.
+                  Tracked in butler-console#56, butler-cli#37, butler-server#56.
                 type: boolean
+              platformRole:
+                description: |-
+                  PlatformRole is the platform-wide role assigned to this user.
+                  "admin" grants full platform access (equivalent to isPlatformAdmin).
+                  "viewer" grants read-only access across all teams and clusters.
+                  Empty string means no platform role; the user has only their
+                  team-scoped permissions.
+                enum:
+                - admin
+                - viewer
+                - ""
+                type: string
               sshKeys:
                 description: |-
                   SSHKeys are the user's saved SSH public keys for workspace access.

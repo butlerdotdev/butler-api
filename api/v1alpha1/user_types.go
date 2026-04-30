@@ -72,14 +72,23 @@ type UserSpec struct {
 	SSOSubject string `json:"ssoSubject,omitempty"`
 
 	// IsPlatformAdmin grants full platform access, bypassing team-based RBAC.
-	// Platform admins can:
-	// - Manage all teams, users, clusters, and providers
-	// - Access all resources regardless of team membership
-	// - Configure platform-wide settings
-	// Use sparingly - most users should use team-based access control.
+	// Deprecated: use PlatformRole instead. When true, treated as
+	// PlatformRole "admin" internally. Both fields are honored; the
+	// effective role is the higher of the two. Removal targeted for
+	// v1.0.0 after butler-console and butler-cli migrate to PlatformRole.
+	// Tracked in butler-console#56, butler-cli#37, butler-server#56.
 	// +optional
 	// +kubebuilder:default=false
 	IsPlatformAdmin bool `json:"isPlatformAdmin,omitempty"`
+
+	// PlatformRole is the platform-wide role assigned to this user.
+	// "admin" grants full platform access (equivalent to isPlatformAdmin).
+	// "viewer" grants read-only access across all teams and clusters.
+	// Empty string means no platform role; the user has only their
+	// team-scoped permissions.
+	// +optional
+	// +kubebuilder:validation:Enum=admin;viewer;""
+	PlatformRole string `json:"platformRole,omitempty"`
 
 	// SSHKeys are the user's saved SSH public keys for workspace access.
 	// Public keys are not sensitive — storing them in spec avoids Secret sprawl
@@ -238,9 +247,13 @@ const (
 // 5. Password is hashed (bcrypt) and stored in a Secret
 // 6. User status changes from Pending to Active
 //
-// Platform Admin:
-// Users with spec.isPlatformAdmin=true have full platform access,
-// bypassing team-based RBAC. This should be used sparingly.
+// Platform Roles:
+// Users with spec.platformRole="admin" (or the deprecated
+// spec.isPlatformAdmin=true) have full platform access, bypassing
+// team-based RBAC. Users with spec.platformRole="viewer" have
+// read-only access across all teams and clusters. Platform roles
+// can also be assigned via IdP group mapping on the IdentityProvider
+// CRD (spec.platformRoleGroups).
 type User struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -284,7 +297,22 @@ func (u *User) IsDisabled() bool {
 	return u.Spec.Disabled || u.Status.Phase == UserPhaseDisabled
 }
 
-// IsPlatformAdmin returns true if this user has platform admin privileges.
+// IsPlatformAdmin returns true if this user has platform admin privileges,
+// either via the deprecated IsPlatformAdmin field or the PlatformRole field.
 func (u *User) IsPlatformAdmin() bool {
-	return u.Spec.IsPlatformAdmin
+	return u.Spec.IsPlatformAdmin || u.Spec.PlatformRole == "admin"
+}
+
+// GetEffectivePlatformRole returns the effective platform role for this user.
+// When both PlatformRole and the deprecated IsPlatformAdmin are set, the
+// higher role wins: IsPlatformAdmin=true is treated as "admin", which
+// overrides PlatformRole="viewer".
+func (u *User) GetEffectivePlatformRole() string {
+	if u.Spec.PlatformRole == "admin" || u.Spec.IsPlatformAdmin {
+		return "admin"
+	}
+	if u.Spec.PlatformRole == "viewer" {
+		return "viewer"
+	}
+	return ""
 }
