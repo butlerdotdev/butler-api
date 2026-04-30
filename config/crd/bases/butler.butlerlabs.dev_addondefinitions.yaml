@@ -204,6 +204,20 @@ spec:
                   Platform addons are installed during cluster bootstrap and cannot
                   be uninstalled via the UI. They appear in a separate section.
                 type: boolean
+              tier:
+                description: |-
+                  Tier controls which directory the addon is placed in during GitOps
+                  export: "infrastructure" or "apps". Infrastructure-tier addons
+                  provide CRDs or platform prerequisites that must exist before
+                  workloads that consume them. When set, this takes precedence over
+                  the Platform field for directory placement. When empty, inferred
+                  from Platform: platform addons default to "infrastructure",
+                  non-platform addons default to "apps".
+                  See ADR-015 for design rationale. Tracked in butler-controller#79.
+                enum:
+                - infrastructure
+                - apps
+                type: string
             required:
             - category
             - chart
