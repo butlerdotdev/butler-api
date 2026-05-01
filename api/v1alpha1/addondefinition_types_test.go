@@ -121,6 +121,15 @@ func TestIconDataField(t *testing.T) {
 			if present != tt.wantJSON {
 				t.Errorf("iconData in JSON = %v, want %v", present, tt.wantJSON)
 			}
+
+			// Round-trip: unmarshal back and verify value preserved
+			var spec AddonDefinitionSpec
+			if err := json.Unmarshal(data, &spec); err != nil {
+				t.Fatalf("failed to unmarshal spec: %v", err)
+			}
+			if spec.IconData != tt.iconData {
+				t.Errorf("round-trip IconData = %q, want %q", spec.IconData, tt.iconData)
+			}
 		})
 	}
 }
