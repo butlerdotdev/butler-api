@@ -78,6 +78,16 @@ type AddonDefinitionSpec struct {
 	// +optional
 	Icon string `json:"icon,omitempty"`
 
+	// IconData is a base64-encoded SVG used for inline icon rendering
+	// in the addon catalog UI. Allows self-contained operation without
+	// external image hosting, which is required for air-gapped deployments.
+	// Custom addon authors set this field to embed their own project logo.
+	// When present, takes precedence over the Icon emoji field.
+	// Tracked in butlerdotdev/butler-api#37.
+	// +kubebuilder:validation:MaxLength=131072
+	// +optional
+	IconData string `json:"iconData,omitempty"`
+
 	// Chart specifies the Helm chart to install.
 	// +kubebuilder:validation:Required
 	Chart AddonChartSpec `json:"chart"`

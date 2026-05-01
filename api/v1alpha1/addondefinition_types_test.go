@@ -16,7 +16,10 @@ limitations under the License.
 
 package v1alpha1
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestGetEffectiveTier(t *testing.T) {
 	tests := []struct {
@@ -69,6 +72,63 @@ func TestGetEffectiveTier(t *testing.T) {
 			got := ad.GetEffectiveTier()
 			if got != tt.want {
 				t.Errorf("GetEffectiveTier() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIconDataField(t *testing.T) {
+	tests := []struct {
+		name     string
+		iconData string
+		wantJSON bool
+	}{
+		{
+			name:     "iconData set with base64 SVG",
+			iconData: "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4=",
+			wantJSON: true,
+		},
+		{
+			name:     "iconData omitted when empty",
+			iconData: "",
+			wantJSON: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ad := &AddonDefinition{
+				Spec: AddonDefinitionSpec{
+					IconData: tt.iconData,
+				},
+			}
+
+			if ad.Spec.IconData != tt.iconData {
+				t.Errorf("IconData = %q, want %q", ad.Spec.IconData, tt.iconData)
+			}
+
+			data, err := json.Marshal(ad.Spec)
+			if err != nil {
+				t.Fatalf("failed to marshal spec: %v", err)
+			}
+
+			var raw map[string]interface{}
+			if err := json.Unmarshal(data, &raw); err != nil {
+				t.Fatalf("failed to unmarshal spec: %v", err)
+			}
+
+			_, present := raw["iconData"]
+			if present != tt.wantJSON {
+				t.Errorf("iconData in JSON = %v, want %v", present, tt.wantJSON)
+			}
+
+			// Round-trip: unmarshal back and verify value preserved
+			var spec AddonDefinitionSpec
+			if err := json.Unmarshal(data, &spec); err != nil {
+				t.Fatalf("failed to unmarshal spec: %v", err)
+			}
+			if spec.IconData != tt.iconData {
+				t.Errorf("round-trip IconData = %q, want %q", spec.IconData, tt.iconData)
 			}
 		})
 	}
