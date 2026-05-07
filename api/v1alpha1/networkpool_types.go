@@ -47,19 +47,61 @@ type TenantAllocationDefaults struct {
 	LBPoolPerTenant int32 `json:"lbPoolPerTenant,omitempty"`
 }
 
-// TenantAllocationConfig defines the allocatable sub-range and defaults.
-type TenantAllocationConfig struct {
-	// Start is the first allocatable IP address.
+// AllocationRange defines a contiguous block of allocatable IPs.
+// Maximum 16 ranges per pool. This is sufficient for all expected
+// topologies; if more are needed, reconsider whether the pool should
+// be split into multiple NetworkPools.
+type AllocationRange struct {
+	// Start is the first allocatable IP address in this range.
 	// +kubebuilder:validation:Required
 	Start string `json:"start"`
 
-	// End is the last allocatable IP address.
+	// End is the last allocatable IP address in this range.
 	// +kubebuilder:validation:Required
 	End string `json:"end"`
+}
+
+// TenantAllocationConfig defines the allocatable sub-range(s) and defaults.
+type TenantAllocationConfig struct {
+	// Start is the first allocatable IP address.
+	// Deprecated: Use Ranges for multi-range support. When Ranges is
+	// specified, Start and End are ignored. Removal targeted after all
+	// deployments migrate to Ranges.
+	// +optional
+	Start string `json:"start,omitempty"`
+
+	// End is the last allocatable IP address.
+	// Deprecated: Use Ranges for multi-range support. When Ranges is
+	// specified, Start and End are ignored. Removal targeted after all
+	// deployments migrate to Ranges.
+	// +optional
+	End string `json:"end,omitempty"`
+
+	// Ranges defines one or more allocatable IP ranges within the pool's
+	// CIDR. When specified, Start and End are ignored. Each range must fall
+	// within the pool's CIDR, ranges must not overlap, and must be sorted
+	// by start IP ascending. Validated by the admission webhook.
+	// +kubebuilder:validation:MaxItems=16
+	// +optional
+	Ranges []AllocationRange `json:"ranges,omitempty"`
 
 	// Defaults defines default allocation sizes per tenant.
 	// +optional
 	Defaults TenantAllocationDefaults `json:"defaults,omitempty"`
+}
+
+// GetEffectiveRanges returns the allocatable ranges for this configuration.
+// If Ranges is specified, it takes precedence over Start/End. If only
+// Start and End are set, they are returned as a single-element slice.
+// A nil return means the entire pool CIDR (minus reserved) is allocatable.
+func (t *TenantAllocationConfig) GetEffectiveRanges() []AllocationRange {
+	if len(t.Ranges) > 0 {
+		return t.Ranges
+	}
+	if t.Start != "" && t.End != "" {
+		return []AllocationRange{{Start: t.Start, End: t.End}}
+	}
+	return nil
 }
 
 // NetworkPoolSpec defines the desired state of NetworkPool.
