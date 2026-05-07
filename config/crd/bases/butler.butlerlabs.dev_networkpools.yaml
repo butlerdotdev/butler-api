@@ -106,14 +106,46 @@ spec:
                         type: integer
                     type: object
                   end:
-                    description: End is the last allocatable IP address.
+                    description: |-
+                      End is the last allocatable IP address.
+                      Deprecated: Use Ranges for multi-range support. When Ranges is
+                      specified, Start and End are ignored. Removal targeted after all
+                      deployments migrate to Ranges.
                     type: string
+                  ranges:
+                    description: |-
+                      Ranges defines one or more allocatable IP ranges within the pool's
+                      CIDR. When specified, Start and End are ignored. Each range must fall
+                      within the pool's CIDR, ranges must not overlap, and must be sorted
+                      by start IP ascending. Validated by the admission webhook.
+                    items:
+                      description: |-
+                        AllocationRange defines a contiguous block of allocatable IPs.
+                        Maximum 16 ranges per pool. This is sufficient for all expected
+                        topologies; if more are needed, reconsider whether the pool should
+                        be split into multiple NetworkPools.
+                      properties:
+                        end:
+                          description: End is the last allocatable IP address in this
+                            range.
+                          type: string
+                        start:
+                          description: Start is the first allocatable IP address in
+                            this range.
+                          type: string
+                      required:
+                      - end
+                      - start
+                      type: object
+                    maxItems: 16
+                    type: array
                   start:
-                    description: Start is the first allocatable IP address.
+                    description: |-
+                      Start is the first allocatable IP address.
+                      Deprecated: Use Ranges for multi-range support. When Ranges is
+                      specified, Start and End are ignored. Removal targeted after all
+                      deployments migrate to Ranges.
                     type: string
-                required:
-                - end
-                - start
                 type: object
             required:
             - cidr
