@@ -121,6 +121,26 @@ type NetworkPoolSpec struct {
 	TenantAllocation *TenantAllocationConfig `json:"tenantAllocation,omitempty"`
 }
 
+// InfrastructureAllocation represents a single infrastructure IP consumed
+// from a reserved range by a management-cluster resource (e.g., a MetalLB
+// load balancer Service).
+type InfrastructureAllocation struct {
+	// IP is the individual IP address allocated to infrastructure.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^(\d{1,3}\.){3}\d{1,3}$`
+	IP string `json:"ip"`
+
+	// Source identifies the infrastructure system that owns this IP.
+	// Examples: "metallb", "dhcp", "static".
+	// +kubebuilder:validation:Required
+	Source string `json:"source"`
+
+	// ServiceRef references the Kubernetes Service consuming this IP.
+	// Only populated when Source is "metallb".
+	// +optional
+	ServiceRef *NamespacedObjectReference `json:"serviceRef,omitempty"`
+}
+
 // NetworkPoolStatus defines the observed state of NetworkPool.
 type NetworkPoolStatus struct {
 	// Conditions represent the latest available observations.
@@ -154,6 +174,15 @@ type NetworkPoolStatus struct {
 	// LargestFreeBlock is the size of the largest contiguous free block.
 	// +optional
 	LargestFreeBlock int32 `json:"largestFreeBlock,omitempty"`
+
+	// InfrastructureAllocations lists IPs within reserved ranges that are
+	// consumed by management-plane infrastructure (MetalLB Services, etc.).
+	// Populated by the infrastructure-allocation reconciler. May be absent
+	// on clusters running older CRD versions.
+	// +optional
+	// +listType=map
+	// +listMapKey=ip
+	InfrastructureAllocations []InfrastructureAllocation `json:"infrastructureAllocations,omitempty"`
 
 	// ObservedGeneration is the last observed generation.
 	// +optional
