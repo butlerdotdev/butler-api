@@ -233,6 +233,52 @@ spec:
                 maximum: 100
                 minimum: 0
                 type: integer
+              infrastructureAllocations:
+                description: |-
+                  InfrastructureAllocations lists IPs within reserved ranges that are
+                  consumed by management-plane infrastructure (MetalLB Services, etc.).
+                  Populated by the infrastructure-allocation reconciler. May be absent
+                  on clusters running older CRD versions.
+                items:
+                  description: |-
+                    InfrastructureAllocation represents a single infrastructure IP consumed
+                    from a reserved range by a management-cluster resource (e.g., a MetalLB
+                    load balancer Service).
+                  properties:
+                    ip:
+                      description: IP is the individual IP address allocated to infrastructure.
+                      pattern: ^(\d{1,3}\.){3}\d{1,3}$
+                      type: string
+                    serviceRef:
+                      description: |-
+                        ServiceRef references the Kubernetes Service consuming this IP.
+                        Only populated when Source is "metallb".
+                      properties:
+                        name:
+                          description: Name is the name of the resource.
+                          minLength: 1
+                          type: string
+                        namespace:
+                          description: Namespace is the namespace of the resource.
+                          minLength: 1
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                    source:
+                      description: |-
+                        Source identifies the infrastructure system that owns this IP.
+                        Examples: "metallb", "dhcp", "static".
+                      type: string
+                  required:
+                  - ip
+                  - source
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - ip
+                x-kubernetes-list-type: map
               largestFreeBlock:
                 description: LargestFreeBlock is the size of the largest contiguous
                   free block.
