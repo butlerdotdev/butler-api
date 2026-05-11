@@ -1,0 +1,33 @@
+{
+  "name": "empty_lastseengroups_explicit",
+  "description": "Explicit empty slice for lastSeenGroups (not null) resolves manual access only, same as null. Catches divergence between len(groups)==0 short-circuit and groups!=nil check.",
+  "input": {
+    "email": "alice@corteva.com",
+    "lastSeenGroups": [],
+    "teams": [
+      {
+        "name": "platform-engineering",
+        "access": {
+          "users": [
+            {"name": "alice@corteva.com", "role": "admin"}
+          ],
+          "groups": [
+            {"name": "b3a1c2d4-5e6f-7890-abcd-ef1234567890", "role": "viewer"}
+          ]
+        }
+      },
+      {
+        "name": "data-science",
+        "access": {
+          "users": [
+            {"name": "bob@corteva.com", "role": "operator"}
+          ],
+          "groups": []
+        }
+      }
+    ]
+  },
+  "expected": [
+    {"name": "platform-engineering", "role": "admin"}
+  ]
+}

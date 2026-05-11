@@ -1,0 +1,22 @@
+{
+  "name": "empty_no_access",
+  "description": "No lastSeenGroups and no manual access produces no team memberships",
+  "input": {
+    "email": "nobody@corteva.com",
+    "lastSeenGroups": null,
+    "teams": [
+      {
+        "name": "platform-engineering",
+        "access": {
+          "users": [
+            {"name": "alice@corteva.com", "role": "admin"}
+          ],
+          "groups": [
+            {"name": "b3a1c2d4-5e6f-7890-abcd-ef1234567890", "role": "viewer"}
+          ]
+        }
+      }
+    ]
+  },
+  "expected": []
+}

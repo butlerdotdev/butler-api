@@ -1,0 +1,33 @@
+{
+  "name": "manual_only",
+  "description": "Manual access resolves without lastSeenGroups (nil groups, pre-SSO login)",
+  "input": {
+    "email": "alice@corteva.com",
+    "lastSeenGroups": null,
+    "teams": [
+      {
+        "name": "platform-engineering",
+        "access": {
+          "users": [
+            {"name": "alice@corteva.com", "role": "admin"}
+          ],
+          "groups": [
+            {"name": "b3a1c2d4-5e6f-7890-abcd-ef1234567890", "role": "viewer"}
+          ]
+        }
+      },
+      {
+        "name": "data-science",
+        "access": {
+          "users": [
+            {"name": "bob@corteva.com", "role": "operator"}
+          ],
+          "groups": []
+        }
+      }
+    ]
+  },
+  "expected": [
+    {"name": "platform-engineering", "role": "admin"}
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "default_role",
+  "description": "Empty role string on manual access defaults to viewer",
+  "input": {
+    "email": "alice@corteva.com",
+    "lastSeenGroups": null,
+    "teams": [
+      {
+        "name": "platform-engineering",
+        "access": {
+          "users": [
+            {"name": "alice@corteva.com", "role": ""}
+          ],
+          "groups": []
+        }
+      }
+    ]
+  },
+  "expected": [
+    {"name": "platform-engineering", "role": "viewer"}
+  ]
+}

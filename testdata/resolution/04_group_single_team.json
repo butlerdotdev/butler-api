@@ -1,0 +1,31 @@
+{
+  "name": "group_single_team",
+  "description": "lastSeenGroups matches one team via UUID group identifier",
+  "input": {
+    "email": "carol@corteva.com",
+    "lastSeenGroups": ["b3a1c2d4-5e6f-7890-abcd-ef1234567890"],
+    "teams": [
+      {
+        "name": "platform-engineering",
+        "access": {
+          "users": [],
+          "groups": [
+            {"name": "b3a1c2d4-5e6f-7890-abcd-ef1234567890", "role": "operator"}
+          ]
+        }
+      },
+      {
+        "name": "data-science",
+        "access": {
+          "users": [],
+          "groups": [
+            {"name": "f9e8d7c6-b5a4-3210-fedc-ba9876543210", "role": "viewer"}
+          ]
+        }
+      }
+    ]
+  },
+  "expected": [
+    {"name": "platform-engineering", "role": "operator"}
+  ]
+}
