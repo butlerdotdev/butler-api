@@ -121,9 +121,9 @@ type NetworkPoolSpec struct {
 	TenantAllocation *TenantAllocationConfig `json:"tenantAllocation,omitempty"`
 }
 
-// InfrastructureAllocation represents a single infrastructure IP consumed
-// from a reserved range by a management-cluster resource (e.g., a MetalLB
-// load balancer Service).
+// InfrastructureAllocation represents a single infrastructure IP observed
+// within the pool CIDR by a management-cluster resource (e.g., a MetalLB
+// load balancer Service or a Node's InternalIP).
 type InfrastructureAllocation struct {
 	// IP is the individual IP address allocated to infrastructure.
 	// +kubebuilder:validation:Required
@@ -131,14 +131,20 @@ type InfrastructureAllocation struct {
 	IP string `json:"ip"`
 
 	// Source identifies the infrastructure system that owns this IP.
-	// Examples: "metallb", "dhcp", "static".
+	// Examples: "metallb", "node", "static".
 	// +kubebuilder:validation:Required
 	Source string `json:"source"`
 
 	// ServiceRef references the Kubernetes Service consuming this IP.
-	// Only populated when Source is "metallb".
+	// Populated when a LoadBalancer Service uses this IP.
 	// +optional
 	ServiceRef *NamespacedObjectReference `json:"serviceRef,omitempty"`
+
+	// NodeRef references the Kubernetes Node using this IP as its InternalIP.
+	// Populated when Source is "node" or when a Node's InternalIP matches
+	// a Service's LoadBalancer IP.
+	// +optional
+	NodeRef *NamespacedObjectReference `json:"nodeRef,omitempty"`
 }
 
 // NetworkPoolStatus defines the observed state of NetworkPool.
@@ -175,14 +181,43 @@ type NetworkPoolStatus struct {
 	// +optional
 	LargestFreeBlock int32 `json:"largestFreeBlock,omitempty"`
 
-	// InfrastructureAllocations lists IPs within reserved ranges that are
-	// consumed by management-plane infrastructure (MetalLB Services, etc.).
+	// InfrastructureAllocations lists IPs within the pool CIDR that are
+	// consumed by management-plane infrastructure (MetalLB Services, Nodes).
 	// Populated by the infrastructure-allocation reconciler. May be absent
 	// on clusters running older CRD versions.
 	// +optional
 	// +listType=map
 	// +listMapKey=ip
 	InfrastructureAllocations []InfrastructureAllocation `json:"infrastructureAllocations,omitempty"`
+
+	// PoolSizeIPs is the total number of IPs in the pool CIDR
+	// (including gateway, reserved, tenant, and unmanaged space).
+	// +optional
+	PoolSizeIPs int32 `json:"poolSizeIPs,omitempty"`
+
+	// ReservedIPs is the total number of IPs across all declared reserved CIDRs.
+	// +optional
+	ReservedIPs int32 `json:"reservedIPs,omitempty"`
+
+	// UnmanagedScopeIPs is the number of IPs in the pool CIDR that are not
+	// covered by reserved ranges or tenant allocation ranges (excluding the
+	// network and broadcast addresses). These IPs are within the pool CIDR
+	// but not managed by Butler's IPAM allocation logic.
+	// +optional
+	UnmanagedScopeIPs int32 `json:"unmanagedScopeIPs,omitempty"`
+
+	// InfrastructureConsumedIPs is the count of unique IPs tracked in
+	// InfrastructureAllocations.
+	// +optional
+	InfrastructureConsumedIPs int32 `json:"infrastructureConsumedIPs,omitempty"`
+
+	// UnmanagedRanges lists the contiguous IP ranges within the pool CIDR
+	// that are not covered by reserved ranges or tenant allocation ranges.
+	// Computed by the controller from the spec. Consumers use this to
+	// understand the pool's unmanaged address space without performing
+	// CIDR arithmetic.
+	// +optional
+	UnmanagedRanges []AllocationRange `json:"unmanagedRanges,omitempty"`
 
 	// ObservedGeneration is the last observed generation.
 	// +optional
