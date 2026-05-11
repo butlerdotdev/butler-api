@@ -249,6 +249,24 @@ spec:
                       description: IP is the individual IP address allocated to infrastructure.
                       pattern: ^(\d{1,3}\.){3}\d{1,3}$
                       type: string
+                    machineRef:
+                      description: |-
+                        MachineRef references a CAPI Machine resource whose VM uses this IP.
+                        Populated when Source is "machine". The Machine's spec.clusterName
+                        identifies which tenant cluster the VM belongs to.
+                      properties:
+                        name:
+                          description: Name is the name of the resource.
+                          minLength: 1
+                          type: string
+                        namespace:
+                          description: Namespace is the namespace of the resource.
+                          minLength: 1
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
                     nodeRef:
                       description: |-
                         NodeRef references the Kubernetes Node using this IP as its InternalIP.

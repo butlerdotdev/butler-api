@@ -145,6 +145,12 @@ type InfrastructureAllocation struct {
 	// a Service's LoadBalancer IP.
 	// +optional
 	NodeRef *ClusterObjectReference `json:"nodeRef,omitempty"`
+
+	// MachineRef references a CAPI Machine resource whose VM uses this IP.
+	// Populated when Source is "machine". The Machine's spec.clusterName
+	// identifies which tenant cluster the VM belongs to.
+	// +optional
+	MachineRef *NamespacedObjectReference `json:"machineRef,omitempty"`
 }
 
 // NetworkPoolStatus defines the observed state of NetworkPool.
