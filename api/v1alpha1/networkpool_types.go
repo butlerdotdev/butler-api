@@ -122,8 +122,8 @@ type NetworkPoolSpec struct {
 }
 
 // InfrastructureAllocation represents a single infrastructure IP observed
-// within the pool CIDR by a management-cluster resource (e.g., a MetalLB
-// load balancer Service or a Node's InternalIP).
+// within the pool CIDR by a management-cluster resource (e.g., a
+// LoadBalancer Service or a Node's InternalIP).
 type InfrastructureAllocation struct {
 	// IP is the individual IP address allocated to infrastructure.
 	// +kubebuilder:validation:Required
@@ -146,7 +146,7 @@ type InfrastructureAllocation struct {
 	// +optional
 	NodeRef *ClusterObjectReference `json:"nodeRef,omitempty"`
 
-	// MachineRef references a CAPI Machine resource whose VM uses this IP.
+	// MachineRef references a cluster infrastructure Machine resource whose VM uses this IP.
 	// Populated when Source is "machine". The Machine's spec.clusterName
 	// identifies which tenant cluster the VM belongs to.
 	// +optional
@@ -188,7 +188,7 @@ type NetworkPoolStatus struct {
 	LargestFreeBlock int32 `json:"largestFreeBlock,omitempty"`
 
 	// InfrastructureAllocations lists IPs within the pool CIDR that are
-	// consumed by management-plane infrastructure (MetalLB Services, Nodes).
+	// consumed by management-plane infrastructure (LoadBalancer Services, Nodes).
 	// Populated by the infrastructure-allocation reconciler. May be absent
 	// on clusters running older CRD versions.
 	// +optional
