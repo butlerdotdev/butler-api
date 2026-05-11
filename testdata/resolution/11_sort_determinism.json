@@ -1,0 +1,62 @@
+{
+  "name": "sort_determinism",
+  "description": "Five teams in reverse alphabetical order in input produce ascending sorted output",
+  "input": {
+    "email": "alice@corteva.com",
+    "lastSeenGroups": null,
+    "teams": [
+      {
+        "name": "zeta-operations",
+        "access": {
+          "users": [
+            {"name": "alice@corteva.com", "role": "viewer"}
+          ],
+          "groups": []
+        }
+      },
+      {
+        "name": "seed-research",
+        "access": {
+          "users": [
+            {"name": "alice@corteva.com", "role": "operator"}
+          ],
+          "groups": []
+        }
+      },
+      {
+        "name": "platform-engineering",
+        "access": {
+          "users": [
+            {"name": "alice@corteva.com", "role": "admin"}
+          ],
+          "groups": []
+        }
+      },
+      {
+        "name": "data-science",
+        "access": {
+          "users": [
+            {"name": "alice@corteva.com", "role": "viewer"}
+          ],
+          "groups": []
+        }
+      },
+      {
+        "name": "crop-protection",
+        "access": {
+          "users": [
+            {"name": "alice@corteva.com", "role": "operator"}
+          ],
+          "groups": []
+        }
+      }
+    ]
+  },
+  "expected": [
+    {"name": "crop-protection", "role": "operator"},
+    {"name": "data-science", "role": "viewer"},
+    {"name": "platform-engineering", "role": "admin"},
+    {"name": "seed-research", "role": "operator"},
+    {"name": "zeta-operations", "role": "viewer"}
+  ]
+}

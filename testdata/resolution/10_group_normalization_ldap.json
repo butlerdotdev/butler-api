@@ -1,0 +1,22 @@
+{
+  "name": "group_normalization_ldap",
+  "description": "LDAP DN format configured on team matches plain group name from IdP via CN extraction",
+  "input": {
+    "email": "carol@corteva.com",
+    "lastSeenGroups": ["devops"],
+    "teams": [
+      {
+        "name": "devops-team",
+        "access": {
+          "users": [],
+          "groups": [
+            {"name": "CN=DevOps,OU=Groups,DC=corp,DC=corteva,DC=com", "role": "admin"}
+          ]
+        }
+      }
+    ]
+  },
+  "expected": [
+    {"name": "devops-team", "role": "admin"}
+  ]
+}

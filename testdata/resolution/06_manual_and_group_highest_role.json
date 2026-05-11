@@ -1,0 +1,24 @@
+{
+  "name": "manual_and_group_highest_role",
+  "description": "Manual access as viewer and group access as admin on same team: admin wins",
+  "input": {
+    "email": "alice@corteva.com",
+    "lastSeenGroups": ["b3a1c2d4-5e6f-7890-abcd-ef1234567890"],
+    "teams": [
+      {
+        "name": "platform-engineering",
+        "access": {
+          "users": [
+            {"name": "alice@corteva.com", "role": "viewer"}
+          ],
+          "groups": [
+            {"name": "b3a1c2d4-5e6f-7890-abcd-ef1234567890", "role": "admin"}
+          ]
+        }
+      }
+    ]
+  },
+  "expected": [
+    {"name": "platform-engineering", "role": "admin"}
+  ]
+}

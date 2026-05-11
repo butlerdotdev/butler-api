@@ -1,0 +1,46 @@
+{
+  "name": "group_multiple_teams",
+  "description": "lastSeenGroups matches groups on three teams with deterministic sorted output",
+  "input": {
+    "email": "carol@corteva.com",
+    "lastSeenGroups": [
+      "b3a1c2d4-5e6f-7890-abcd-ef1234567890",
+      "f9e8d7c6-b5a4-3210-fedc-ba9876543210"
+    ],
+    "teams": [
+      {
+        "name": "seed-research",
+        "access": {
+          "users": [],
+          "groups": [
+            {"name": "f9e8d7c6-b5a4-3210-fedc-ba9876543210", "role": "viewer"}
+          ]
+        }
+      },
+      {
+        "name": "crop-protection",
+        "access": {
+          "users": [],
+          "groups": [
+            {"name": "b3a1c2d4-5e6f-7890-abcd-ef1234567890", "role": "admin"}
+          ]
+        }
+      },
+      {
+        "name": "platform-engineering",
+        "access": {
+          "users": [],
+          "groups": [
+            {"name": "b3a1c2d4-5e6f-7890-abcd-ef1234567890", "role": "operator"},
+            {"name": "f9e8d7c6-b5a4-3210-fedc-ba9876543210", "role": "viewer"}
+          ]
+        }
+      }
+    ]
+  },
+  "expected": [
+    {"name": "crop-protection", "role": "admin"},
+    {"name": "platform-engineering", "role": "operator"},
+    {"name": "seed-research", "role": "viewer"}
+  ]
+}

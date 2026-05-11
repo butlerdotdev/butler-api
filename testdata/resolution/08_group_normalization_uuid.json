@@ -1,0 +1,22 @@
+{
+  "name": "group_normalization_uuid",
+  "description": "UUID group identifiers match case-insensitively (Entra ID returns uppercase UUIDs)",
+  "input": {
+    "email": "carol@corteva.com",
+    "lastSeenGroups": ["B3A1C2D4-5E6F-7890-ABCD-EF1234567890"],
+    "teams": [
+      {
+        "name": "platform-engineering",
+        "access": {
+          "users": [],
+          "groups": [
+            {"name": "b3a1c2d4-5e6f-7890-abcd-ef1234567890", "role": "operator"}
+          ]
+        }
+      }
+    ]
+  },
+  "expected": [
+    {"name": "platform-engineering", "role": "operator"}
+  ]
+}
