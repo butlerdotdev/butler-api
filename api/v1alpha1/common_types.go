@@ -72,6 +72,14 @@ type NamespacedObjectReference struct {
 	Namespace string `json:"namespace"`
 }
 
+// ClusterObjectReference references a cluster-scoped resource (e.g., Node).
+type ClusterObjectReference struct {
+	// Name is the name of the resource.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+}
+
 // ControlPlaneResourcesSpec defines resource requests/limits for tenant
 // control plane components. Used in ButlerConfig (platform defaults) and
 // TenantCluster (per-cluster overrides).

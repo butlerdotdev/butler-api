@@ -144,7 +144,7 @@ type InfrastructureAllocation struct {
 	// Populated when Source is "node" or when a Node's InternalIP matches
 	// a Service's LoadBalancer IP.
 	// +optional
-	NodeRef *NamespacedObjectReference `json:"nodeRef,omitempty"`
+	NodeRef *ClusterObjectReference `json:"nodeRef,omitempty"`
 }
 
 // NetworkPoolStatus defines the observed state of NetworkPool.
