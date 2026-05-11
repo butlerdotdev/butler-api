@@ -4237,10 +4237,19 @@ func (in *UserStatus) DeepCopyInto(out *UserStatus) {
 		in, out := &in.LockedUntil, &out.LockedUntil
 		*out = (*in).DeepCopy()
 	}
+	if in.LastSeenGroups != nil {
+		in, out := &in.LastSeenGroups, &out.LastSeenGroups
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Teams != nil {
 		in, out := &in.Teams, &out.Teams
 		*out = make([]UserTeamMembership, len(*in))
 		copy(*out, *in)
+	}
+	if in.TeamsResolvedAt != nil {
+		in, out := &in.TeamsResolvedAt, &out.TeamsResolvedAt
+		*out = (*in).DeepCopy()
 	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions

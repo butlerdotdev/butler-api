@@ -171,10 +171,35 @@ type UserStatus struct {
 	// +optional
 	LockedUntil *metav1.Time `json:"lockedUntil,omitempty"`
 
+	// LastSeenGroups contains the IdP group identifiers from the user's most
+	// recent OIDC token. Written by butler-server at login. Used by the
+	// butler-controller User reconciler to resolve group-based Team membership
+	// without requiring the user to be actively logged in.
+	//
+	// Group identifiers are IdP-specific: UUIDs for Microsoft Entra, email-style
+	// for Google Workspace, plain names for others. Values are stored exactly as
+	// received from the IdP (no normalization). The Team resolution logic
+	// normalizes at match time.
+	// +optional
+	LastSeenGroups []string `json:"lastSeenGroups,omitempty"`
+
 	// Teams lists the teams this user belongs to (resolved from Team CRDs).
 	// This is informational and updated periodically.
 	// +optional
 	Teams []UserTeamMembership `json:"teams,omitempty"`
+
+	// TeamsResolvedAt is when status.teams was last successfully resolved
+	// by the butler-controller User reconciler. Updated atomically with
+	// status.teams on conditional writes (only when resolved teams differ
+	// from current status.teams). Used by the butler_user_status_stale_age_seconds
+	// metric to surface silent degradation in team resolution.
+	//
+	// When nil (pre-upgrade User CRDs or never-resolved Users), stale_age
+	// computation falls back to the User's creationTimestamp. This produces
+	// the worst-case stale_age value, ensuring unresolved users are visible
+	// in monitoring alerts.
+	// +optional
+	TeamsResolvedAt *metav1.Time `json:"teamsResolvedAt,omitempty"`
 
 	// Conditions represent the latest available observations.
 	// +optional
