@@ -102,9 +102,10 @@ type OptionRule struct {
 	RecommendedReason string `json:"recommendedReason,omitempty"`
 }
 
-// ClusterWideScope marks a policy as applying to every team. Use for
-// org-wide rules such as deprecation lists.
-type ClusterWideScope struct{}
+// PlatformWideScope marks a policy as applying to every team and every
+// environment on this Butler platform. Use for org-wide rules such as
+// deprecation lists.
+type PlatformWideScope struct{}
 
 // TeamScope marks a policy as applying to one team across all of its
 // environments.
@@ -129,16 +130,17 @@ type TeamEnvironmentScope struct {
 	EnvironmentName string `json:"environmentName"`
 }
 
-// PolicyScope discriminator. Exactly one of clusterWide, team, or
+// PolicyScope discriminator. Exactly one of platformWide, team, or
 // teamAndEnvironment must be set. Enforced via CEL XValidation here at
 // schema time; the policy admission webhook in butler-controller layers
 // additional checks (referenced team and environment existence,
 // intra-tier conflict detection) per ADR-018 Decision section 7.
-// +kubebuilder:validation:XValidation:rule="(has(self.clusterWide)?1:0) + (has(self.team)?1:0) + (has(self.teamAndEnvironment)?1:0) == 1",message="exactly one of clusterWide, team, or teamAndEnvironment must be set"
+// +kubebuilder:validation:XValidation:rule="(has(self.platformWide)?1:0) + (has(self.team)?1:0) + (has(self.teamAndEnvironment)?1:0) == 1",message="exactly one of platformWide, team, or teamAndEnvironment must be set"
 type PolicyScope struct {
-	// ClusterWide applies the policy to every team.
+	// PlatformWide applies the policy to every team and every
+	// environment on this Butler platform.
 	// +optional
-	ClusterWide *ClusterWideScope `json:"clusterWide,omitempty"`
+	PlatformWide *PlatformWideScope `json:"platformWide,omitempty"`
 
 	// Team applies the policy to one team across all of its environments.
 	// +optional

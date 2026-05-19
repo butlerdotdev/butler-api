@@ -120,8 +120,10 @@ spec:
                   Scope selects which TenantCluster create requests this policy
                   applies to.
                 properties:
-                  clusterWide:
-                    description: ClusterWide applies the policy to every team.
+                  platformWide:
+                    description: |-
+                      PlatformWide applies the policy to every team and every
+                      environment on this Butler platform.
                     type: object
                   team:
                     description: Team applies the policy to one team across all of
@@ -168,9 +170,9 @@ spec:
                     type: object
                 type: object
                 x-kubernetes-validations:
-                - message: exactly one of clusterWide, team, or teamAndEnvironment
+                - message: exactly one of platformWide, team, or teamAndEnvironment
                     must be set
-                  rule: (has(self.clusterWide)?1:0) + (has(self.team)?1:0) + (has(self.teamAndEnvironment)?1:0)
+                  rule: (has(self.platformWide)?1:0) + (has(self.team)?1:0) + (has(self.teamAndEnvironment)?1:0)
                     == 1
               targetProviders:
                 description: |-

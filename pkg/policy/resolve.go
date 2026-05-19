@@ -33,11 +33,11 @@ import (
 // (butler-controller) they come from the TenantCluster being validated.
 type ResolutionContext struct {
 	// TeamName is the team owning the TenantCluster. Empty means the
-	// request has no team context; only ClusterWide policies match.
+	// request has no team context; only PlatformWide policies match.
 	TeamName string
 
 	// EnvironmentName is the team environment. Empty means no environment
-	// is selected; only ClusterWide and Team scope policies match.
+	// is selected; only PlatformWide and Team scope policies match.
 	EnvironmentName string
 
 	// ProviderType is the underlying provider for the cluster. A policy
@@ -51,7 +51,7 @@ type ResolutionContext struct {
 // rule per option type for the given context.
 //
 // Specificity wins: a teamAndEnvironment-scoped rule for an option type
-// shadows any team or clusterWide rule for the same option type. Modes
+// shadows any team or platformWide rule for the same option type. Modes
 // do not stack across tiers. Option types with no matching rule do not
 // appear in the result.
 //
@@ -114,7 +114,7 @@ func binByTier(ctx ResolutionContext, policies []butlerv1alpha1.ClusterCreationP
 			tiers[0] = append(tiers[0], pol)
 		case tierTeam:
 			tiers[1] = append(tiers[1], pol)
-		case tierClusterWide:
+		case tierPlatformWide:
 			tiers[2] = append(tiers[2], pol)
 		}
 	}
@@ -127,7 +127,7 @@ const (
 	tierNone tier = iota
 	tierTeamAndEnv
 	tierTeam
-	tierClusterWide
+	tierPlatformWide
 )
 
 // tierOf returns the specificity tier of a policy's scope under the
@@ -146,8 +146,8 @@ func tierOf(ctx ResolutionContext, scope butlerv1alpha1.PolicyScope) tier {
 			return tierTeam
 		}
 		return tierNone
-	case scope.ClusterWide != nil:
-		return tierClusterWide
+	case scope.PlatformWide != nil:
+		return tierPlatformWide
 	default:
 		return tierNone
 	}

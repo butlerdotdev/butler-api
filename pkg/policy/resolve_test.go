@@ -35,8 +35,8 @@ func makePolicy(name string, scope butlerv1alpha1.PolicyScope, providers []butle
 	}
 }
 
-func clusterWide() butlerv1alpha1.PolicyScope {
-	return butlerv1alpha1.PolicyScope{ClusterWide: &butlerv1alpha1.ClusterWideScope{}}
+func platformWide() butlerv1alpha1.PolicyScope {
+	return butlerv1alpha1.PolicyScope{PlatformWide: &butlerv1alpha1.PlatformWideScope{}}
 }
 
 func teamScope(team string) butlerv1alpha1.PolicyScope {
@@ -57,25 +57,25 @@ func TestResolve_NoPoliciesReturnsEmpty(t *testing.T) {
 	}
 }
 
-func TestResolve_ClusterWideOnly(t *testing.T) {
+func TestResolve_PlatformWideOnly(t *testing.T) {
 	policies := []butlerv1alpha1.ClusterCreationPolicy{
-		makePolicy("global-image-allow", clusterWide(), []butlerv1alpha1.ProviderType{butlerv1alpha1.ProviderTypeNutanix}, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
+		makePolicy("global-image-allow", platformWide(), []butlerv1alpha1.ProviderType{butlerv1alpha1.ProviderTypeNutanix}, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
 			butlerv1alpha1.OptionTypeImage: {Mode: butlerv1alpha1.OptionModeAllowList, Values: []string{"img-a", "img-b"}},
 		}),
 	}
 	out := Resolve(ResolutionContext{TeamName: "acme", EnvironmentName: "prod", ProviderType: butlerv1alpha1.ProviderTypeNutanix}, policies)
 	if got, ok := out[butlerv1alpha1.OptionTypeImage]; !ok || got.Mode != butlerv1alpha1.OptionModeAllowList {
-		t.Fatalf("expected image allowList from cluster-wide, got %+v", out)
+		t.Fatalf("expected image allowList from platform-wide, got %+v", out)
 	}
 }
 
 // TestResolve_SpecificityWins reproduces the ADR-018 §6 worked example:
-// a clusterWide image allowList plus a teamAndEnvironment network pin.
-// The image resolution falls through to clusterWide; the network
+// a platformWide image allowList plus a teamAndEnvironment network pin.
+// The image resolution falls through to platformWide; the network
 // resolution stops at teamAndEnvironment.
 func TestResolve_SpecificityWins(t *testing.T) {
 	policies := []butlerv1alpha1.ClusterCreationPolicy{
-		makePolicy("global-no-deprecated-images", clusterWide(), []butlerv1alpha1.ProviderType{butlerv1alpha1.ProviderTypeNutanix}, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
+		makePolicy("global-no-deprecated-images", platformWide(), []butlerv1alpha1.ProviderType{butlerv1alpha1.ProviderTypeNutanix}, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
 			butlerv1alpha1.OptionTypeImage: {Mode: butlerv1alpha1.OptionModeAllowList, Values: []string{"img-rocky-9", "img-talos-1.7", "img-talos-1.8"}},
 		}),
 		makePolicy("acme-prod-network-pin", teamEnvScope("acme", "prod"), []butlerv1alpha1.ProviderType{butlerv1alpha1.ProviderTypeNutanix}, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
@@ -86,7 +86,7 @@ func TestResolve_SpecificityWins(t *testing.T) {
 	out := Resolve(ctx, policies)
 
 	if got, ok := out[butlerv1alpha1.OptionTypeImage]; !ok || got.Mode != butlerv1alpha1.OptionModeAllowList || len(got.Values) != 3 {
-		t.Errorf("expected image allowList[3] from clusterWide, got %+v", got)
+		t.Errorf("expected image allowList[3] from platformWide, got %+v", got)
 	}
 	if got, ok := out[butlerv1alpha1.OptionTypeNetwork]; !ok || got.Mode != butlerv1alpha1.OptionModePin || len(got.Values) != 1 {
 		t.Errorf("expected network pin[1] from teamAndEnv, got %+v", got)
@@ -99,14 +99,14 @@ func TestResolve_SpecificityWins(t *testing.T) {
 	}
 }
 
-// TestResolve_TeamCarveOutWinsOverClusterWide is the canonical
-// specificity-wins illustration from ADR §Patterns: a cluster-wide
+// TestResolve_TeamCarveOutWinsOverPlatformWide is the canonical
+// specificity-wins illustration from ADR §Patterns: a platform-wide
 // deprecation list plus a team carve-out that allows the deprecated
 // image. The team rule wins for the target team; everyone else falls
-// through to the cluster-wide rule.
-func TestResolve_TeamCarveOutWinsOverClusterWide(t *testing.T) {
+// through to the platform-wide rule.
+func TestResolve_TeamCarveOutWinsOverPlatformWide(t *testing.T) {
 	policies := []butlerv1alpha1.ClusterCreationPolicy{
-		makePolicy("global-deny-rocky-8", clusterWide(), []butlerv1alpha1.ProviderType{butlerv1alpha1.ProviderTypeNutanix}, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
+		makePolicy("global-deny-rocky-8", platformWide(), []butlerv1alpha1.ProviderType{butlerv1alpha1.ProviderTypeNutanix}, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
 			butlerv1alpha1.OptionTypeImage: {Mode: butlerv1alpha1.OptionModeAllowList, Values: []string{"img-rocky-9", "img-talos-1.8"}},
 		}),
 		makePolicy("team-legacy-rocky-8", teamScope("team-legacy"), []butlerv1alpha1.ProviderType{butlerv1alpha1.ProviderTypeNutanix}, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
@@ -121,13 +121,13 @@ func TestResolve_TeamCarveOutWinsOverClusterWide(t *testing.T) {
 
 	otherOut := Resolve(ResolutionContext{TeamName: "team-other", ProviderType: butlerv1alpha1.ProviderTypeNutanix}, policies)
 	if got := otherOut[butlerv1alpha1.OptionTypeImage]; len(got.Values) != 2 {
-		t.Errorf("team-other expected to see 2 images (cluster-wide fallback), got %+v", got.Values)
+		t.Errorf("team-other expected to see 2 images (platform-wide fallback), got %+v", got.Values)
 	}
 }
 
 func TestResolve_TargetProvidersFiltering(t *testing.T) {
 	policies := []butlerv1alpha1.ClusterCreationPolicy{
-		makePolicy("nutanix-only", clusterWide(), []butlerv1alpha1.ProviderType{butlerv1alpha1.ProviderTypeNutanix}, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
+		makePolicy("nutanix-only", platformWide(), []butlerv1alpha1.ProviderType{butlerv1alpha1.ProviderTypeNutanix}, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
 			butlerv1alpha1.OptionTypeImage: {Mode: butlerv1alpha1.OptionModePin, Values: []string{"img-only-nutanix"}},
 		}),
 	}
@@ -143,7 +143,7 @@ func TestResolve_TargetProvidersFiltering(t *testing.T) {
 
 func TestResolve_EmptyTargetProvidersMatchesAll(t *testing.T) {
 	policies := []butlerv1alpha1.ClusterCreationPolicy{
-		makePolicy("any-provider", clusterWide(), nil, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
+		makePolicy("any-provider", platformWide(), nil, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
 			butlerv1alpha1.OptionTypeImage: {Mode: butlerv1alpha1.OptionModeRecommended, Values: []string{"img-recommended"}},
 		}),
 	}
@@ -157,7 +157,7 @@ func TestResolve_EmptyTargetProvidersMatchesAll(t *testing.T) {
 
 func TestResolveWithSources_NamesContributingPolicy(t *testing.T) {
 	policies := []butlerv1alpha1.ClusterCreationPolicy{
-		makePolicy("cw-img", clusterWide(), nil, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
+		makePolicy("cw-img", platformWide(), nil, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
 			butlerv1alpha1.OptionTypeImage: {Mode: butlerv1alpha1.OptionModePin, Values: []string{"img-cw"}},
 		}),
 		makePolicy("team-img", teamScope("acme"), nil, map[butlerv1alpha1.OptionType]butlerv1alpha1.OptionRule{
