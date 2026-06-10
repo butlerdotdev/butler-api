@@ -21,7 +21,7 @@ import (
 )
 
 // ProviderType defines the supported infrastructure providers.
-// +kubebuilder:validation:Enum=harvester;nutanix;proxmox;azure;aws;gcp
+// +kubebuilder:validation:Enum=harvester;nutanix;proxmox;azure;aws;gcp;local
 type ProviderType string
 
 const (
@@ -42,6 +42,12 @@ const (
 
 	// ProviderTypeGCP is the Google Cloud Platform provider.
 	ProviderTypeGCP ProviderType = "gcp"
+
+	// ProviderTypeLocal is the local provider. It provisions tenant workers as
+	// containers via the Cluster API Docker provider (CAPD) on a kind-based
+	// management cluster, for running Butler on a laptop without a hypervisor.
+	// Local provider configs require no credentials.
+	ProviderTypeLocal ProviderType = "local"
 )
 
 // ProviderConfigSpec defines the desired state of ProviderConfig.
@@ -56,8 +62,10 @@ type ProviderConfigSpec struct {
 	// - nutanix: "username", "password"
 	// - proxmox: "username", "password" or "token"
 	// - gcp: "serviceAccountKey" (JSON service account key)
-	// +kubebuilder:validation:Required
-	CredentialsRef SecretReference `json:"credentialsRef"`
+	// Required for all providers except "local", which needs no credentials.
+	// The per-provider requirement is enforced by the ProviderConfig admission webhook.
+	// +optional
+	CredentialsRef SecretReference `json:"credentialsRef,omitempty"`
 
 	// Harvester contains Harvester-specific configuration.
 	// Required when provider is "harvester".
@@ -88,6 +96,11 @@ type ProviderConfigSpec struct {
 	// Required when provider is "gcp".
 	// +optional
 	GCP *GCPProviderConfig `json:"gcp,omitempty"`
+
+	// Local contains local-provider configuration.
+	// Optional when provider is "local".
+	// +optional
+	Local *LocalProviderConfig `json:"local,omitempty"`
 
 	// Scope defines the visibility of this ProviderConfig.
 	// Platform-scoped providers are available to all teams.
@@ -308,6 +321,17 @@ type GCPProviderConfig struct {
 	// Tags are network tags applied to VM instances for firewall rules.
 	// +optional
 	Tags []string `json:"tags,omitempty"`
+}
+
+// LocalProviderConfig contains configuration for the local provider, which
+// provisions tenant workers as containers via the Cluster API Docker provider
+// (CAPD). Defaults are suitable for a kind-based management cluster on a laptop.
+type LocalProviderConfig struct {
+	// KindNodeImage overrides the container image used for tenant worker nodes,
+	// for example "kindest/node:v1.30.0". When empty, the image is derived from
+	// the tenant cluster's Kubernetes version.
+	// +optional
+	KindNodeImage string `json:"kindNodeImage,omitempty"`
 }
 
 // ProviderConfigScopeType defines the visibility scope.
