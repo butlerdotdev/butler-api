@@ -51,6 +51,7 @@ const (
 )
 
 // ProviderConfigSpec defines the desired state of ProviderConfig.
+// +kubebuilder:validation:XValidation:rule="self.provider == 'local' || (has(self.credentialsRef) && self.credentialsRef.name != '')",message="credentialsRef with a non-empty name is required for all providers except local"
 type ProviderConfigSpec struct {
 	// Provider specifies the infrastructure provider type.
 	// +kubebuilder:validation:Required
@@ -63,7 +64,8 @@ type ProviderConfigSpec struct {
 	// - proxmox: "username", "password" or "token"
 	// - gcp: "serviceAccountKey" (JSON service account key)
 	// Required for all providers except "local", which needs no credentials.
-	// The per-provider requirement is enforced by the ProviderConfig admission webhook.
+	// The local-exempt, non-local-required split is enforced by the CEL validation
+	// rule on this spec (see the XValidation marker on ProviderConfigSpec).
 	// +optional
 	CredentialsRef SecretReference `json:"credentialsRef,omitempty"`
 
