@@ -119,7 +119,7 @@ type ControlPlaneExposureSpec struct {
 // ClusterBootstrapSpec defines the desired state of ClusterBootstrap
 type ClusterBootstrapSpec struct {
 	// Provider is the infrastructure provider type.
-	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox;gcp;aws;azure
+	// +kubebuilder:validation:Enum=harvester;nutanix;proxmox;gcp;aws;azure;local
 	Provider string `json:"provider"`
 
 	// ProviderRef references the ProviderConfig to use for provisioning
@@ -808,6 +808,14 @@ func (c *ClusterBootstrap) IsCloudProvider() bool {
 		return true
 	}
 	return false
+}
+
+// IsLocal returns true if the provider is the local provider. The local provider
+// installs Butler onto an existing kind-based management cluster and provisions
+// tenant workers as containers via CAPD, so it skips machine provisioning, Talos
+// configuration, and the pivot, and omits hypervisor-only addons such as kube-vip.
+func (c *ClusterBootstrap) IsLocal() bool {
+	return c.Spec.Provider == "local"
 }
 
 // GetExpectedMachineCount returns the expected number of machines based on topology
