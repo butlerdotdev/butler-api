@@ -1,0 +1,93 @@
+# Creates a PR in butler-cli that refreshes the CRDs embedded in `butleradm bootstrap`.
+# Mirror of sync-crds-to-charts.yaml so both CRD consumers (the Helm chart and the
+# cli's embedded manifests) are derived from butler-api, the single source of truth.
+name: Sync CRDs to butler-cli
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'api/**/types.go'
+      - 'api/**/*_types.go'
+      - 'config/crd/bases/**'
+  workflow_dispatch:
+
+env:
+  GO_VERSION: '1.23'
+  CLI_REPO: butlerdotdev/butler-cli
+
+jobs:
+  sync-crds:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout butler-api
+        uses: actions/checkout@v4
+        with:
+          path: butler-api
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: butler-api/go.sum
+
+      - name: Generate CRDs
+        working-directory: butler-api
+        run: |
+          make generate
+          make manifests
+          echo "=== Generated CRDs ==="
+          ls -la config/crd/bases/
+
+      - name: Checkout butler-cli
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CLI_REPO }}
+          path: butler-cli
+          token: ${{ secrets.CLI_SYNC_PAT }}
+
+      - name: Sync embedded CRDs
+        working-directory: butler-cli
+        env:
+          BUTLER_API_PATH: ${{ github.workspace }}/butler-api
+        run: |
+          chmod +x ./hack/sync-crds.sh
+          ./hack/sync-crds.sh
+
+      - name: Check for changes
+        id: changes
+        working-directory: butler-cli
+        run: |
+          if git diff --quiet internal/adm/bootstrap/manifests/crds/; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            git diff --stat internal/adm/bootstrap/manifests/crds/
+          fi
+
+      - name: Create Pull Request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          path: butler-cli
+          token: ${{ secrets.CLI_SYNC_PAT }}
+          commit-message: "chore(crds): sync embedded CRDs from butler-api@${{ github.sha }}"
+          branch: sync-crds/${{ github.sha }}
+          delete-branch: true
+          title: "chore(crds): sync embedded CRDs from butler-api"
+          body: |
+            ## Automated CRD Sync
+
+            Refreshes the CRDs embedded in `butleradm bootstrap` from butler-api commit
+            [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}).
+
+            ### Checklist
+            - [ ] Review CRD changes
+            - [ ] `make build` (confirm the embedded manifests still compile in)
+          labels: |
+            automated
+            crds
