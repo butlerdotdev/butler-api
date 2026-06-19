@@ -494,9 +494,10 @@ type LoadBalancerSpec struct {
 // CertManagerSpec configures cert-manager.
 type CertManagerSpec struct {
 	// Enabled indicates whether cert-manager should be installed.
-	// +kubebuilder:default=true
+	// Defaults to true. Set to false to skip cert-manager installation.
 	// +optional
-	Enabled bool `json:"enabled,omitempty"`
+	// +kubebuilder:default=true
+	Enabled *bool `json:"enabled,omitempty"`
 
 	// Version is the addon version.
 	// +kubebuilder:validation:Required
@@ -506,6 +507,15 @@ type CertManagerSpec struct {
 	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Values *ExtensionValues `json:"values,omitempty"`
+}
+
+// IsCertManagerEnabled returns whether cert-manager should be installed.
+// Returns true when the spec is nil or when Enabled is nil (default behavior).
+func (s *CertManagerSpec) IsCertManagerEnabled() bool {
+	if s == nil || s.Enabled == nil {
+		return true
+	}
+	return *s.Enabled
 }
 
 // StorageSpec configures persistent storage.
