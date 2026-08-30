@@ -168,13 +168,13 @@ type WorkspaceResourceQuota struct {
 
 // ControlPlaneSpec configures the Steward-hosted control plane.
 type ControlPlaneSpec struct {
-	// Replicas is the number of API server replicas.
-	// Steward manages high availability automatically.
-	// +kubebuilder:default=1
+	// Replicas is the number of API server replicas. When omitted, the
+	// hosted control plane provider selects the default; Butler does not
+	// impose one. Steward manages high availability automatically.
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=3
 	// +optional
-	Replicas int32 `json:"replicas,omitempty"`
+	Replicas *int32 `json:"replicas,omitempty"`
 
 	// DataStoreRef references the Steward DataStore to use.
 	// If not specified, the default DataStore is used.
