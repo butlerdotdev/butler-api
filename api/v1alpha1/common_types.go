@@ -95,6 +95,10 @@ type ControlPlaneResourcesSpec struct {
 	// Scheduler resource requirements.
 	// +optional
 	Scheduler *ComponentResources `json:"scheduler,omitempty"`
+
+	// Konnectivity resource requirements for the konnectivity-server sidecar.
+	// +optional
+	Konnectivity *ComponentResources `json:"konnectivity,omitempty"`
 }
 
 // ComponentResources defines CPU and memory requests/limits for a component.
